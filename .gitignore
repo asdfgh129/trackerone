@@ -1,0 +1,42 @@
+# Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+
+# Generated
+lib/**/*.g.dart
+lib/**/*.freezed.dart
+lib/l10n/app_localizations*.dart
+*.g.dart
+
+# Platform
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/ephemeral/
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png
+
+# Env & secrets
+.env
+.env.*
+environment/
+*.keystore
+*.jks
+
+# OS
+.DS_Store

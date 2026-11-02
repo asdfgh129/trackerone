@@ -1,0 +1,22 @@
+{
+  "@@locale": "zh",
+  "appName": "TrackerOne",
+  "mapTab": "地图",
+  "devicesTab": "设备",
+  "eventsTab": "告警",
+  "trackingTab": "跟踪",
+  "settingsTab": "设置",
+  "diagnosticsTitle": "诊断",
+  "startTracking": "开始上报",
+  "stopTracking": "停止上报",
+  "lastUpload": "最后上报",
+  "queueSize": "待上传位置",
+  "serverAddress": "服务器地址",
+  "login": "登录",
+  "logout": "退出登录",
+  "retry": "重试",
+  "offline": "离线",
+  "noDevices": "还没有设备",
+  "permissionRequired": "需要权限",
+  "openSettings": "打开设置"
+}

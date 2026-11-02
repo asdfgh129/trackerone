@@ -1,0 +1,22 @@
+{
+  "@@locale": "en",
+  "appName": "TrackerOne",
+  "mapTab": "Map",
+  "devicesTab": "Devices",
+  "eventsTab": "Alerts",
+  "trackingTab": "Tracking",
+  "settingsTab": "Settings",
+  "diagnosticsTitle": "Diagnostics",
+  "startTracking": "Start tracking",
+  "stopTracking": "Stop tracking",
+  "lastUpload": "Last upload",
+  "queueSize": "Queued positions",
+  "serverAddress": "Server address",
+  "login": "Log in",
+  "logout": "Log out",
+  "retry": "Retry",
+  "offline": "Offline",
+  "noDevices": "No devices yet",
+  "permissionRequired": "Permission required",
+  "openSettings": "Open settings"
+}
