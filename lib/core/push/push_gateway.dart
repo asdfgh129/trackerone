@@ -20,6 +20,7 @@ class PushMessage {
     this.title,
     this.body,
     this.data = const {},
+    this.opened = false,
   });
 
   final int? eventId;
@@ -28,15 +29,22 @@ class PushMessage {
   final String? body;
   final Map<String, dynamic> data;
 
+  /// 用户点击通知（前台展示不算），用于决定是否自动跳转。
+  final bool opened;
+
   bool get isCommand => command != null && command!.isNotEmpty;
 
-  factory PushMessage.fromData(Map<String, dynamic> data) {
+  factory PushMessage.fromData(
+    Map<String, dynamic> data, {
+    bool opened = false,
+  }) {
     return PushMessage(
       eventId: _asInt(data['eventId']),
       command: _asString(data['command']),
       title: _asString(data['title']),
       body: _asString(data['body']),
       data: data,
+      opened: opened,
     );
   }
 
@@ -66,6 +74,9 @@ abstract interface class PushGateway {
   /// 登录用户或服务器变化时更新别名。
   Future<void> updateAlias(String alias);
 
+  /// 退出登录 / 注销账号时解绑别名，避免旧账号继续收到推送。
+  Future<void> deleteAlias();
+
   /// 前台 / 点击通知产生的消息流。
   Stream<PushMessage> get messages;
 
@@ -85,6 +96,9 @@ class NoopPushGateway implements PushGateway {
 
   @override
   Future<void> updateAlias(String alias) async {}
+
+  @override
+  Future<void> deleteAlias() async {}
 
   @override
   Stream<PushMessage> get messages => const Stream<PushMessage>.empty();

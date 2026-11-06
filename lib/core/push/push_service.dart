@@ -54,6 +54,9 @@ class PushService {
     return _gateway.updateAlias(aliasFor(userId: userId, serverId: serverId));
   }
 
+  /// 退出登录 / 注销账号时解绑，避免串消息。
+  Future<void> deleteAlias() => _gateway.deleteAlias();
+
   Stream<PushMessage> get messages => _gateway.messages;
 
   /// 冷启动点击通知：登录完成后再调用，避免路由竞态。

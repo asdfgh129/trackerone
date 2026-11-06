@@ -2,7 +2,7 @@
 
 把 **Traccar Client**（本机后台上报）与 **Traccar Manager**（设备查看与管理）合二为一的 Flutter 移动应用，兼容 Traccar 6.x 服务端。
 
-> 工作代号 **TrackerOne**，包名 / 品牌 / 默认服务器均为占位值，可通过 `lib/core/config/brand.dart` 统一替换。
+> 工作代号 **TrackerOne**，正式包名/Bundle ID 已定为 `com.trackerone.app`；品牌、默认服务器与隐私政策地址仍可通过 `lib/core/config/brand.dart` 统一替换。
 
 ## 项目状态
 
@@ -10,11 +10,18 @@
 |---|---|
 | 产品与技术规划 | ✅ 完成（见 `docs/`） |
 | 中国大陆方案（地图/推送/备案） | ✅ 已定（见 `docs/09`） |
-| 工程骨架 | ✅ 已建立（无平台工程） |
-| 核心抽象（坐标系 / 地图 / 推送） | ✅ 代码已写，待编译验证 |
+| 工程骨架 | ✅ 已建立 |
+| 核心抽象（坐标系 / 地图 / 推送） | ✅ 代码已编译验证 |
 | Traccar 推送补丁 | ✅ 代码已写（`server/`） |
-| Flutter 平台工程 | ⬜ 待生成（本机未安装 Flutter） |
-| MVP 开发 | ⬜ 未开始 |
+| Flutter 平台工程 | ✅ 已生成 `android/` + `ios/`，原生权限/后台模式已配置 |
+| M1 骨架 | ✅ 服务器档案、密码/Token 登录、会话持久化、路由守卫、底部导航 |
+| M2 跟踪与实时地图 | ✅ 本机上报、设备/位置 WebSocket、设备列表/详情、跟踪面板已接入 |
+| M3 历史 / 事件 / 推送 | 🟡 历史与事件已完成；推送 alias、深链、远程指令、推送诊断已接线，待真机与网关联调 |
+| M4 可运维 | 🟡 诊断页、权限/保活引导、35 语言、指令队列、地图聚合与性能优化已就绪；待真机性能实测与翻译校对 |
+| 离线缓存 | ✅ drift 缓存设备/最新位置/事件/待发送指令，实时接口失败时自动回退 |
+| 指令 | ✅ 指令面板、参数校验、危险确认、离线入队、自动重试、记录管理 |
+| 发布材料 | 🟡 签名模板、ExportOptions、`tool/release_check.sh`、测试矩阵/推送/发布清单已补齐；正式签名与备案待办 |
+| 构建验证 | ✅ Android debug APK、iOS 模拟器（`flutter build ios --simulator`）均通过 |
 
 > 首发市场为**中国大陆**。当前地图按高德实施，推送按极光 + 厂商通道实施；
 > 详细依据见 [docs/09-china-launch.md](docs/09-china-launch.md)。
@@ -79,29 +86,36 @@ trackerone/
 ├── integration_test/         # 端到端测试（待建）
 ├── tool/bootstrap.sh         # 生成 android/ios 平台工程
 ├── tool/verify.sh            # pub get / analyze / test
+├── tool/release_check.sh     # 发布自检：ARB / 配置 / analyze / test
+├── tool/translate_arb.py     # 从 en 生成 34 个语言初稿（需母语校对）
 ├── pubspec.yaml
 └── analysis_options.yaml
 ```
 
 ## 快速开始
 
-Flutter 安装完成后，先生成平台工程，再拉依赖：
+平台工程已生成，直接拉依赖并运行：
 
 ```bash
 cd trackerone
 
-# 1. 生成 android/ 与 ios/（只复制平台目录，不覆盖 lib/ 与 docs/）
-tool/bootstrap.sh
-
-# 2. 依赖与代码生成
+# 1. 依赖与代码生成
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs
 flutter gen-l10n
 
-# 3. 编译与测试（等价于 tool/verify.sh）
+# 2. 编译与测试（等价于 tool/verify.sh）
 flutter analyze
 flutter test
-# 4. 运行（中国大陆配置）
+
+# 3. 运行（未配置 Key 时可用 MAP_PROVIDER=none / PUSH_PROVIDER=none）
+flutter run \
+  --dart-define=MAP_PROVIDER=none \
+  --dart-define=PUSH_PROVIDER=none
+```
+
+配置高德地图与极光推送时：
+
+```bash
 flutter run \
   --dart-define=API_BASE_URL=https://track.example.com \
   --dart-define=MAP_PROVIDER=amap \
@@ -111,8 +125,35 @@ flutter run \
   --dart-define=JPUSH_APP_KEY=$JPUSH_APP_KEY
 ```
 
-平台工程生成后，按 [`docs/10-setup-runbook.md`](docs/10-setup-runbook.md) 配置：
-权限、`allowNativeHeapPointerTagging=false`、iOS Background Modes、极光厂商通道。
+性能压测（仅调试，不写入缓存）：
+
+```bash
+flutter run \
+  --dart-define=SIMULATE_DEVICES=1000 \
+  --dart-define=MAP_PROVIDER=amap \
+  --dart-define=AMAP_ANDROID_KEY=$AMAP_ANDROID_KEY
+```
+
+发布前自检：
+
+```bash
+# ARB 35 语言完整性 + 占位符 + 签名配置 + analyze + test
+tool/release_check.sh
+
+# 只检查配置与 ARB
+tool/release_check.sh --fast
+```
+
+更多文档：
+
+- 真机测试矩阵：[docs/11-device-test-matrix.md](docs/11-device-test-matrix.md)
+- 极光/网关联调：[docs/12-push-integration.md](docs/12-push-integration.md)
+- 发布清单：[docs/13-release-checklist.md](docs/13-release-checklist.md)
+- 开发计划差距分析：[docs/14-roadmap-gap-analysis.md](docs/14-roadmap-gap-analysis.md)
+
+原生权限、`allowNativeHeapPointerTagging=false`、iOS Background Modes、
+极光厂商通道等已按 [`docs/10-setup-runbook.md`](docs/10-setup-runbook.md) 写入平台工程；
+重新生成平台工程时使用 `FORCE=1 tool/bootstrap.sh`（会覆盖原生配置，慎用）。
 
 > 未配置 Key 时用 `MAP_PROVIDER=none` / `PUSH_PROVIDER=none`，应用仍可启动，
 > 只是地图显示占位、推送退化为应用内事件。

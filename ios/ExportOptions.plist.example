@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  复制为 ios/ExportOptions.plist 后修改 teamID / bundle id。
+  该文件包含签名主体信息，默认不提交（见 .gitignore）。
+-->
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>app-store-connect</string>
+  <key>signingStyle</key>
+  <string>automatic</string>
+  <key>teamID</key>
+  <string>YOUR_TEAM_ID</string>
+  <key>uploadSymbols</key>
+  <true/>
+  <key>stripSwiftSymbols</key>
+  <true/>
+  <key>destination</key>
+  <string>export</string>
+</dict>
+</plist>

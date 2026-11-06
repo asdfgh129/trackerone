@@ -61,7 +61,7 @@ class JpushPushGateway implements PushGateway {
         _messages.add(_toMessage(message));
       },
       onOpenNotification: (Map<String, dynamic> message) async {
-        _messages.add(_toMessage(message));
+        _messages.add(_toMessage(message, opened: true));
         await _jpush.setBadge(0);
       },
     );
@@ -69,7 +69,7 @@ class JpushPushGateway implements PushGateway {
     try {
       // jpush_flutter 3.6.0 的接口名是 getLaunchAppNotification()。
       final launch = await _jpush.getLaunchAppNotification();
-      final initial = _toMessageOrNull(launch);
+      final initial = _toMessageOrNull(launch, opened: true);
       if (initial != null) {
         _initialMessage = initial;
       }
@@ -93,6 +93,17 @@ class JpushPushGateway implements PushGateway {
   }
 
   @override
+  Future<void> deleteAlias() async {
+    if (!_initialized) return;
+    try {
+      await _jpush.deleteAlias();
+    } catch (error) {
+      // 解绑失败不应阻断退出登录；下次初始化会覆盖 alias。
+      debugPrint('JPush deleteAlias failed: $error');
+    }
+  }
+
+  @override
   Future<PushMessage?> takeInitialMessage() async {
     final message = _initialMessage;
     _initialMessage = null;
@@ -104,7 +115,7 @@ class JpushPushGateway implements PushGateway {
     await _messages.close();
   }
 
-  PushMessage _toMessage(Map<String, dynamic> message) {
+  PushMessage _toMessage(Map<String, dynamic> message, {bool opened = false}) {
     final extras = message['extras'];
     final data = <String, dynamic>{};
     if (extras is Map) {
@@ -112,18 +123,23 @@ class JpushPushGateway implements PushGateway {
         data[_keyToString(entry.key)] = entry.value;
       }
     }
+    final normalized = PushMessage.fromData(data, opened: opened);
     return PushMessage(
-      eventId: PushMessage.fromData(data).eventId,
-      command: PushMessage.fromData(data).command,
+      eventId: normalized.eventId,
+      command: normalized.command,
       title: (message['title'] as Object?)?.toString() ??
           (data['title'] as Object?)?.toString(),
       body: (message['alert'] as Object?)?.toString() ??
           (data['body'] as Object?)?.toString(),
       data: data,
+      opened: opened,
     );
   }
 
-  PushMessage? _toMessageOrNull(Map<dynamic, dynamic>? message) {
+  PushMessage? _toMessageOrNull(
+    Map<dynamic, dynamic>? message, {
+    bool opened = false,
+  }) {
     if (message == null || message.isEmpty) return null;
     final data = message.map(
       (key, value) => MapEntry(_keyToString(key), value),
@@ -133,9 +149,10 @@ class JpushPushGateway implements PushGateway {
     if (extras is Map) {
       return PushMessage.fromData(
         extras.map((key, value) => MapEntry(_keyToString(key), value)),
+        opened: opened,
       );
     }
-    return PushMessage.fromData(data);
+    return PushMessage.fromData(data, opened: opened);
   }
 
   /// 避免对 `dynamic` 直接调用方法（analysis_options 开启 avoid_dynamic_calls）。

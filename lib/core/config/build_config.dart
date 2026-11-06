@@ -60,6 +60,14 @@ abstract final class BuildConfig {
     defaultValue: 'none',
   );
 
+  /// 调试用模拟设备数量：`--dart-define=SIMULATE_DEVICES=500`。
+  ///
+  /// 仅用于本机性能验证（地图聚合、帧率），不会写入正式缓存。
+  static const int simulateDevices = int.fromEnvironment(
+    'SIMULATE_DEVICES',
+    defaultValue: 0,
+  );
+
   static bool get hasApiOverride => apiBaseUrl.isNotEmpty;
 
   static bool get isProd => flavor == 'prod';

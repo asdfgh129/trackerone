@@ -23,6 +23,7 @@ class AmapTrackerMap extends StatefulWidget {
     this.initialZoom = 15,
     this.trafficEnabled = false,
     this.onMarkerTap,
+    this.onZoomChanged,
     this.onMapReady,
     super.key,
   });
@@ -35,6 +36,7 @@ class AmapTrackerMap extends StatefulWidget {
   final double initialZoom;
   final bool trafficEnabled;
   final ValueChanged<MapDeviceMarker>? onMarkerTap;
+  final ValueChanged<double>? onZoomChanged;
   final VoidCallback? onMapReady;
 
   @override
@@ -81,6 +83,9 @@ class _AmapTrackerMapState extends State<AmapTrackerMap> {
       onMapCreated: (controller) {
         widget.onMapReady?.call();
       },
+      onCameraMove: widget.onZoomChanged == null
+          ? null
+          : (position) => widget.onZoomChanged!(position.zoom),
       onTap: (latLng) {
         // 用户在地图上点选：把 GCJ-02 还原成 WGS-84 后再交给业务层。
         final wgs = CoordinateTransform.gcj02ToWgs84(
@@ -97,7 +102,17 @@ class _AmapTrackerMapState extends State<AmapTrackerMap> {
       for (final marker in widget.markers)
         Marker(
           position: _toLatLng(marker.point),
-          infoWindow: InfoWindow(title: marker.label),
+          icon: marker.isCluster
+              ? BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueOrange,
+                )
+              : BitmapDescriptor.defaultMarker,
+          alpha: marker.isCluster ? 0.9 : 1,
+          infoWindow: InfoWindow(
+            title: marker.isCluster
+                ? '${marker.clusterCount}'
+                : marker.label,
+          ),
           onTap: (_) {
             widget.onMarkerTap?.call(marker);
           },

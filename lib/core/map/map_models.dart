@@ -11,6 +11,8 @@ class MapDeviceMarker {
     this.isSelf = false,
     this.batteryLevel,
     this.speedMetersPerSecond,
+    this.clusterCount = 1,
+    this.clusterDeviceIds = const [],
   });
 
   final int deviceId;
@@ -25,6 +27,14 @@ class MapDeviceMarker {
   final bool isSelf;
   final double? batteryLevel;
   final double? speedMetersPerSecond;
+
+  /// 聚合标记包含的设备数；1 表示普通设备标记。
+  final int clusterCount;
+
+  /// 聚合标记包含的设备 id，点击后可让用户选择具体设备。
+  final List<int> clusterDeviceIds;
+
+  bool get isCluster => clusterCount > 1;
 }
 
 /// 轨迹尾迹。点数由调用方按距离 / 时间抽稀后传入。

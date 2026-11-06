@@ -6,16 +6,20 @@
 
 ## 1. 当前环境快照
 
+> 2026-11 更新：Flutter 已安装，平台工程已生成，本节保留为环境核对清单。
+
 | 项 | 现状 | 结论 |
 |---|---|---|
-| macOS | 13.6.7 Ventura（Intel x86_64） | ⚠️ 见 3.1 |
-| Homebrew | 6.0.22 | ✅ |
-| Flutter / Dart | 用户安装中 | 待验证 |
-| Android SDK | `~/Library/Android/sdk`，adb 可用 | ✅ |
-| Java | Temurin 17.0.20 | ✅ |
-| Xcode | 仅 Command Line Tools | ❌ 需完整 Xcode |
-| CocoaPods | 未安装 | ❌ |
-| 磁盘 | 剩余约 300 GB | ✅ |
+| macOS | 26.5.2 (Intel x86_64) | ⚠️ Flutter 已提示未来版本将停止支持 Intel |
+| Homebrew | 已安装 | ✅ |
+| Flutter / Dart | 3.47.9 stable / Dart 3.13.7 | ✅ |
+| Android SDK | `~/Library/Android/sdk`，Platform 37 / Build Tools 36 | ✅ |
+| Java | Android Studio JBR 25 / Temurin 17 | ✅ |
+| Xcode | 26.5（完整安装） | ✅ |
+| CocoaPods | 1.17.0 | ✅ |
+| 磁盘 | 充足 | ✅ |
+
+> Intel Mac 仍可开发 Android；iOS 发布建议使用 Apple Silicon 机器或云端 CI。
 
 ---
 
@@ -148,11 +152,11 @@ grep -r "applicationId" android/app/build.gradle*
 grep -r "PRODUCT_BUNDLE_IDENTIFIER" ios/Runner.xcodeproj/project.pbxproj | head -2
 ```
 
-期望：`com.example.trackerone`。
+期望：`com.trackerone.app`（Android 与 iOS 一致）。
 
-> **发布前必须改**：`com.example.*` 无法作为正式上架包名（部分商店直接拒绝，
-> 且发布后不可更改）。改名涉及包名、Bundle ID、高德 Key、极光 AppKey、Firebase
-> 应用注册。建议在 M0 结束前就换成真实反向域名。
+> 正式包名已于 2026-11-06 定稿为 `com.trackerone.app`。改名涉及包名、Bundle ID、
+> 高德 Key、极光 AppKey、Firebase 应用注册；发布后不可更改，后续如需调整必须
+> 在申请 Key 之前完成。
 
 ---
 
@@ -226,17 +230,18 @@ flutter gen-l10n
 
 ```kotlin
 android {
-    namespace = "com.example.trackerone"
+    namespace = "com.trackerone.app"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.trackerone"
+        applicationId = "com.trackerone.app"
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        manifestPlaceholders["JPUSH_PKGNAME"] = applicationId
+        // AGP 9 的 applicationId 是 String?，这里显式断言。
+        manifestPlaceholders["JPUSH_PKGNAME"] = applicationId!!
         manifestPlaceholders["JPUSH_APPKEY"] = "替换为极光 AppKey"
         manifestPlaceholders["JPUSH_CHANNEL"] = "developer-default"
     }
@@ -303,6 +308,41 @@ Xcode 中为 Runner 开启：
 
 - Signing & Capabilities → **Push Notifications**
 - Background Modes → Location updates / Background fetch / Remote notifications
+
+#### SwiftPM + CocoaPods 混用（当前方案）
+
+- `traccar_client_sdk` **只有 Swift Package**，没有 podspec，必须保留 SPM；
+- `amap_map` 还没有 SPM 支持，只能走 CocoaPods；
+- Firebase / JPush 走 SPM。
+
+两者混用本身没问题，真正的冲突在高德：`MAMapKit` 静态库里内嵌了一份
+nanopb，导出 `_pb_istream_from_buffer`、`_pb_ostream_from_buffer`、
+`_pb_release` 三个全局符号，而 Firebase 也会链接 nanopb，最终报
+`3 duplicate symbols`。
+
+处理方式：`ios/Podfile` 的 `post_install` 调用
+[`tool/patch_amap_nanopb.sh`](../tool/patch_amap_nanopb.sh)，用 `nmedit` 把
+高德那份改成局部符号（高德内部调用不受影响）。脚本可重复执行，每次
+`pod install` 后自动生效。
+
+`ios/Podfile` 同时保留 Firebase 版本兜底（仅在关闭 SPM、改走 CocoaPods
+时生效）：
+
+```ruby
+$FirebaseSDKVersion = '12.19.0'
+```
+
+FlutterFire 5.1.0 的 podspec 默认钉到 `12.19.3`，但 `FirebaseAnalytics`
+该版本尚未发布到 CocoaPods CDN。升级 FlutterFire 时同步检查并调整。
+
+已在本机验证（Intel Mac / Xcode 26.5）：
+
+```bash
+flutter build ios --simulator --no-codesign
+# ✓ Built build/ios/iphonesimulator/Runner.app
+```
+
+> 模拟器只验证编译与链接；后台定位、通知点击、推送到达仍需真机验证。
 
 ---
 
@@ -437,15 +477,23 @@ curl -s http://localhost:8082/api/server | jq .version
 | `pub get` 版本冲突 | 依赖版本过新 | 降级 `amap_map` / `jpush_flutter` 或先移除 |
 | iOS 真机无法运行 | 签名/描述文件 | Xcode 登录 Apple ID，配置 Team |
 | 后台上报 10 分钟断 | 厂商省电策略 | 加入白名单，见 `docs/05` 6.3 |
+| `AAR metadata` 要求 compileSdk 36+ | 地图等插件仍写死 35 | `android/build.gradle.kts` 已在 `afterEvaluate` 中统一抬到 37 |
+| Kotlin 版本冲突 | SDK 用 2.4.20 | `android/settings.gradle.kts` 同步为 `2.4.20` |
+| `manifestPlaceholders` 类型错误 | AGP 9 的 `applicationId` 为 `String?` | 使用 `applicationId!!` |
+| 首次 Android 构建很慢 | 自动下载 NDK / CMake / 平台 | 保持网络，后续增量构建约 1–2 分钟 |
+| iOS `3 duplicate symbols`（nanopb） | 高德 MAMapKit 内嵌 nanopb，与 Firebase 冲突 | `Podfile` 的 `post_install` 自动调用 `tool/patch_amap_nanopb.sh` 把高德符号改为局部 |
+| `pod install` 报 `bad URI` / 证书错误 | `https_proxy` 缺少 `http://`，Ruby 找不到根证书 | `export https_proxy=http://127.0.0.1:20171`、`SSL_CERT_FILE=/etc/ssl/cert.pem` |
+| `FirebaseAnalytics (= 12.19.3)` 找不到 | FlutterFire 钉的版本尚未上 CDN | Podfile 设 `$FirebaseSDKVersion = '12.19.0'`，必要时 `pod install --repo-update` |
+| `pod install` 克隆 firebase-ios-sdk 失败 | 代理下大仓库 shallow clone 超时 | 重试；或 `git config --global http.version HTTP/1.1`、调大 `http.postBuffer` |
 
 ---
 
 ## 13. 下一步
 
-M0 通过后按 [`docs/06-roadmap.md`](06-roadmap.md) 进入 M1：
+M1 / M2 已完成，按 [`docs/06-roadmap.md`](06-roadmap.md) 继续：
 
-1. 服务器档案 + 二维码 + 测试连接；
-2. 登录 / Token / Secure Storage / 生物识别；
-3. drift 缓存 + Repository；
-4. 引导流程与权限向导；
-5. 把 `TrackerMapView` 接到真实设备数据。
+1. 真机验证权限向导、后台定位与厂商白名单引导；
+2. 极光 + 推送网关真机联调（前后台 / 冷启动点击）；
+3. 指令发送 UI（设备详情）与本机指令回执；
+4. 待确认指令入队与重试（离线缓存已覆盖设备 / 位置 / 事件）；
+5. 35 语言、性能（500/1000 设备）、发布材料与签名。

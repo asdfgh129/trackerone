@@ -4,6 +4,7 @@
 .pub-cache/
 .pub/
 build/
+dist/
 .flutter-plugins
 .flutter-plugins-dependencies
 *.iml
@@ -30,6 +31,7 @@ ios/Flutter/ephemeral/
 ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
 ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png
+ios/ExportOptions.plist
 
 # Env & secrets
 .env
@@ -40,3 +42,7 @@ environment/
 
 # OS
 .DS_Store
+
+# Python tool cache
+__pycache__/
+*.pyc

@@ -64,12 +64,14 @@ class FcmPushGateway implements PushGateway {
       (message) => _messages.add(PushMessage.fromData(message.data)),
     );
     _onOpenedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
-      (message) => _messages.add(PushMessage.fromData(message.data)),
+      (message) => _messages.add(
+        PushMessage.fromData(message.data, opened: true),
+      ),
     );
 
     final initial = await messaging.getInitialMessage();
     if (initial != null) {
-      _initialMessage = PushMessage.fromData(initial.data);
+      _initialMessage = PushMessage.fromData(initial.data, opened: true);
     }
 
     await updateAlias(alias);
@@ -82,6 +84,19 @@ class FcmPushGateway implements PushGateway {
     if (_topics.contains(topic)) return;
     _topics.add(topic);
     await FirebaseMessaging.instance.subscribeToTopic(topic);
+  }
+
+  @override
+  Future<void> deleteAlias() async {
+    final topics = _topics.toList(growable: false);
+    _topics.clear();
+    for (final topic in topics) {
+      try {
+        await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+      } catch (error) {
+        debugPrint('FCM unsubscribe $topic failed: $error');
+      }
+    }
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/build_config.dart';
+import '../../l10n/app_localizations.dart';
 import 'amap/amap_tracker_map.dart';
 import 'geo_point.dart';
 import 'map_models.dart';
@@ -19,6 +20,7 @@ class TrackerMapView extends ConsumerWidget {
     this.initialTarget,
     this.initialZoom = 15,
     this.onMarkerTap,
+    this.onZoomChanged,
     super.key,
   });
 
@@ -27,6 +29,7 @@ class TrackerMapView extends ConsumerWidget {
   final GeoPoint? initialTarget;
   final double initialZoom;
   final ValueChanged<MapDeviceMarker>? onMarkerTap;
+  final ValueChanged<double>? onZoomChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,6 +44,7 @@ class TrackerMapView extends ConsumerWidget {
           initialZoom: initialZoom,
           trafficEnabled: config.trafficEnabled,
           onMarkerTap: onMarkerTap,
+          onZoomChanged: onZoomChanged,
         ),
     };
   }
@@ -54,6 +58,7 @@ class _AmapGate extends ConsumerWidget {
     required this.initialZoom,
     required this.trafficEnabled,
     required this.onMarkerTap,
+    this.onZoomChanged,
   });
 
   final List<MapDeviceMarker> markers;
@@ -62,6 +67,7 @@ class _AmapGate extends ConsumerWidget {
   final double initialZoom;
   final bool trafficEnabled;
   final ValueChanged<MapDeviceMarker>? onMarkerTap;
+  final ValueChanged<double>? onZoomChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,7 +75,7 @@ class _AmapGate extends ConsumerWidget {
 
     return consent.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => _MapConsentCard(
+      error: (_, _) => _MapConsentCard(
         onAgree: () => ref.read(mapPrivacyConsentProvider.notifier).agree(),
       ),
       data: (agreed) {
@@ -89,6 +95,7 @@ class _AmapGate extends ConsumerWidget {
           initialZoom: initialZoom,
           trafficEnabled: trafficEnabled,
           onMarkerTap: onMarkerTap,
+          onZoomChanged: onZoomChanged,
         );
       },
     );
@@ -106,6 +113,7 @@ class _MapConsentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerLow,
       child: Center(
@@ -116,19 +124,17 @@ class _MapConsentCard extends StatelessWidget {
             children: [
               Icon(Icons.map_outlined, size: 48, color: theme.colorScheme.primary),
               const SizedBox(height: 16),
-              Text('地图服务说明', style: theme.textTheme.titleLarge),
+              Text(l10n.mapConsentTitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               Text(
-                '本应用使用高德地图 SDK 显示位置与轨迹。'
-                '为提供地图能力，SDK 会收集设备信息、网络状态和地图交互数据。'
-                '请阅读《隐私政策》中的第三方 SDK 清单后使用。',
+                l10n.mapConsentBody,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: onAgree,
-                child: const Text('同意并加载地图'),
+                child: Text(l10n.mapConsentAgree),
               ),
             ],
           ),
@@ -144,6 +150,7 @@ class _MapUnavailable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -152,11 +159,10 @@ class _MapUnavailable extends StatelessWidget {
           children: [
             Icon(Icons.map_outlined, size: 48, color: theme.colorScheme.outline),
             const SizedBox(height: 12),
-            Text('地图未配置', style: theme.textTheme.titleMedium),
+            Text(l10n.mapUnavailableTitle, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              '构建时通过 --dart-define=MAP_PROVIDER=amap '
-              '与 AMAP_ANDROID_KEY / AMAP_IOS_KEY 启用高德地图。',
+              l10n.mapUnavailableBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),
@@ -174,6 +180,7 @@ class _MapKeyMissing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -183,11 +190,10 @@ class _MapKeyMissing extends StatelessWidget {
             Icon(Icons.key_off_outlined,
                 size: 48, color: theme.colorScheme.error),
             const SizedBox(height: 12),
-            Text('缺少高德地图 Key', style: theme.textTheme.titleMedium),
+            Text(l10n.mapKeyMissingTitle, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              '请在构建时传入 --dart-define=AMAP_ANDROID_KEY=... '
-              '与 --dart-define=AMAP_IOS_KEY=...。',
+              l10n.mapKeyMissingBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),

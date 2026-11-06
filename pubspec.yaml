@@ -1,7 +1,7 @@
 name: trackerone
 description: "TrackerOne - unified background tracking and live fleet monitoring for Traccar."
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.4.0+4
 
 environment:
   sdk: ^3.7.2
@@ -35,7 +35,7 @@ dependencies:
   traccar_client_sdk: ^1.1.3
   permission_handler: ^13.0.2
   battery_plus: ^6.2.1
-  device_info_plus: ^11.2.0
+  device_info_plus: ^13.3.0
 
   # Map & geo
   # 中国大陆首发：高德地图（GCJ-02）。腾讯为备选，接入时新增适配器。
@@ -51,7 +51,7 @@ dependencies:
   mobile_scanner: ^7.4.2
   share_plus: ^13.3.1
   url_launcher: ^6.3.3
-  package_info_plus: ^8.3.0
+  package_info_plus: ^10.2.2
 
   # Push
   # 中国大陆生产：极光（聚合小米/华为/OPPO/vivo 厂商通道）

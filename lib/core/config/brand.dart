@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// 品牌与全局常量。白标时优先修改本文件（或由构建脚本注入）。
 abstract final class Brand {
   static const String appName = 'TrackerOne';
-  static const String applicationId = 'com.example.trackerone';
+  static const String applicationId = 'com.trackerone.app';
   static const String deepLinkScheme = 'trackerone';
 
   static const String privacyUrl = 'https://example.com/privacy';

@@ -11,6 +11,8 @@ class Device {
     required this.status,
     this.lastUpdate,
     this.category,
+    this.phone,
+    this.model,
     this.attributes = const {},
   });
 
@@ -20,6 +22,8 @@ class Device {
   final String status;
   final DateTime? lastUpdate;
   final String? category;
+  final String? phone;
+  final String? model;
   final Map<String, dynamic> attributes;
 
   bool get isOnline => status == 'online';
@@ -32,9 +36,23 @@ class Device {
       status: json['status'] as String? ?? 'unknown',
       lastUpdate: _asDate(json['lastUpdate']),
       category: json['category'] as String?,
+      phone: json['phone'] as String?,
+      model: json['model'] as String?,
       attributes: _asMap(json['attributes']),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'uniqueId': uniqueId,
+        'status': status,
+        if (lastUpdate != null) 'lastUpdate': lastUpdate!.toIso8601String(),
+        if (category != null) 'category': category,
+        if (phone != null) 'phone': phone,
+        if (model != null) 'model': model,
+        'attributes': attributes,
+      };
 }
 
 class Position {
@@ -85,6 +103,19 @@ class Position {
       attributes: _asMap(json['attributes']),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'deviceId': deviceId,
+        'latitude': latitude,
+        'longitude': longitude,
+        if (fixTime != null) 'fixTime': fixTime!.toIso8601String(),
+        'speed': speedKnots,
+        'course': course,
+        if (altitude != null) 'altitude': altitude,
+        if (accuracy != null) 'accuracy': accuracy,
+        'attributes': attributes,
+      };
 }
 
 class DeviceEvent {
@@ -117,6 +148,16 @@ class DeviceEvent {
       attributes: _asMap(json['attributes']),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'deviceId': deviceId,
+        'type': type,
+        if (eventTime != null) 'eventTime': eventTime!.toIso8601String(),
+        if (positionId != null) 'positionId': positionId,
+        if (geofenceId != null) 'geofenceId': geofenceId,
+        'attributes': attributes,
+      };
 }
 
 class Account {
@@ -143,6 +184,14 @@ class Account {
       attributes: _asMap(json['attributes']),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'email': email,
+        'administrator': administrator,
+        'attributes': attributes,
+      };
 }
 
 int _asInt(Object? value) {

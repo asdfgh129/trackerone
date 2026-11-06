@@ -39,5 +39,13 @@ void main() {
       // 原始 payload 保留，便于诊断；只是归一化字段为空。
       expect(message.data, hasLength(2));
     });
+
+    test('marks opened notifications so the app can navigate', () {
+      final foreground = PushMessage.fromData({'eventId': 1});
+      final opened = PushMessage.fromData({'eventId': 1}, opened: true);
+
+      expect(foreground.opened, isFalse);
+      expect(opened.opened, isTrue);
+    });
   });
 }

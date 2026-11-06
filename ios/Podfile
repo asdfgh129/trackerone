@@ -1,0 +1,58 @@
+platform :ios, '15.0'
+
+# flutterfire 的 podspec 默认钉到 12.19.3，但该版本尚未发布到 CocoaPods CDN。
+# 这里显式固定到 CDN 上可用的最新补丁版本；升级 Firebase 时同步调整。
+$FirebaseSDKVersion = '12.19.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+
+  # 高德静态库内嵌 nanopb，会与 Firebase 的 nanopb 重复符号。
+  # 把高德那三个全局符号改成局部符号，脚本可重复执行。
+  amap_binary = File.join(
+    installer.sandbox.root, 'AMap3DMap', 'MAMapKit.framework', 'MAMapKit'
+  )
+  if File.exist?(amap_binary)
+    script = File.expand_path(
+      File.join(File.dirname(__FILE__), '..', 'tool', 'patch_amap_nanopb.sh')
+    )
+    system('bash', script, amap_binary) || raise('patch_amap_nanopb failed')
+  end
+end
