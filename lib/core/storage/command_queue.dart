@@ -167,6 +167,32 @@ class CommandQueue {
         status: CommandStatus.cancelled,
       );
 
+  /// 离线等场景的「已入队」：保持 pending，但不消耗发送尝试次数。
+  Future<void> markQueued(int id, {required String reason}) => _update(
+        id,
+        status: CommandStatus.pending,
+        lastError: Value(reason),
+      );
+
+  /// 进程被杀时可能残留 `sending`；启动时恢复为 pending，避免永久卡住。
+  ///
+  /// 返回恢复的记录数，便于测试与诊断。
+  Future<int> recoverInterrupted(String serverId) {
+    return (_db.update(_db.pendingCommands)
+          ..where(
+            (table) =>
+                table.serverId.equals(serverId) &
+                table.status.equals(CommandStatus.sending.name),
+          ))
+        .write(
+      PendingCommandsCompanion(
+        status: Value(CommandStatus.pending.name),
+        lastError: const Value('上次发送未完成，已重新入队'),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+  }
+
   Future<void> resetForRetry(int id) => _update(
         id,
         status: CommandStatus.pending,

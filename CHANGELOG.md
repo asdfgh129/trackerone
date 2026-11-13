@@ -14,6 +14,11 @@
 - 内置高德 Android Key 与极光 AppKey（`BuildConfig` 默认值 + Gradle 占位符），
   `PUSH_PROVIDER` 默认改为 `jpush`，release 构建自动启用地图与推送
 - 新增 7 个设置类 ARB key，35 语言同步
+- 修复 400 参数错误被当作可重试、离线入队消耗重试次数、`sending` 状态无法恢复、
+  刷新丢失 WebSocket 连接状态、通用 REST 401 未全局登出
+- 移除未使用的 `firebase_analytics` 依赖，并通过 manifest 移除 `AD_ID` 等广告权限
+- 新增 iOS `PrivacyInfo.xcprivacy` 并加入 Runner 资源（声明定位/账号/崩溃数据，无跟踪）
+- 删除无引用的 `lib/features/home/home_screen.dart` 占位页
 - 新增缓存/指令 `clearAll` 单元测试；`flutter test` 71 项通过
 
 ## 0.4.0

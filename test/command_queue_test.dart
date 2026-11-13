@@ -184,4 +184,31 @@ void main() {
     expect(await queue.list('s1'), isEmpty);
     expect(await queue.list('s2'), isEmpty);
   });
+
+  test('markQueued keeps pending without consuming attempts', () async {
+    final command =
+        await queue.enqueue(serverId: 's1', deviceId: 1, type: 'positionSingle');
+
+    await queue.markQueued(command.id, reason: '当前离线');
+
+    final item = (await queue.list('s1')).single;
+    expect(item.status, CommandStatus.pending);
+    expect(item.attempts, 0);
+    expect(item.lastError, '当前离线');
+  });
+
+  test('recoverInterrupted resets sending rows to pending', () async {
+    final sending =
+        await queue.enqueue(serverId: 's1', deviceId: 1, type: 'positionSingle');
+    final other =
+        await queue.enqueue(serverId: 's2', deviceId: 1, type: 'positionSingle');
+    await queue.markSending(sending.id);
+    await queue.markSending(other.id);
+
+    final recovered = await queue.recoverInterrupted('s1');
+
+    expect(recovered, 1);
+    expect((await queue.list('s1')).single.status, CommandStatus.pending);
+    expect((await queue.list('s2')).single.status, CommandStatus.sending);
+  });
 }

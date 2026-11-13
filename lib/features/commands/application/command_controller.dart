@@ -95,6 +95,9 @@ class CommandController extends AsyncNotifier<CommandState> {
       (_) => unawaited(flush()),
     );
 
+    // 上次进程被杀可能留下 sending，先恢复再加载列表。
+    await queue.recoverInterrupted(server.id);
+
     final items = await queue.list(server.id);
     return CommandState(items: items);
   }
@@ -123,13 +126,12 @@ class CommandController extends AsyncNotifier<CommandState> {
     );
     await _reload();
 
-    // 已知离线时跳过必然超时的请求。
+    // 已知离线时跳过必然超时的请求，且不消耗重试次数。
     final offline = ref.read(sessionProvider).valueOrNull?.offline ?? false;
     if (offline) {
-      await queue.markFailed(
+      await queue.markQueued(
         row.id,
-        error: '当前离线，指令已加入队列',
-        retryable: true,
+        reason: '当前离线，指令已加入队列',
       );
       await _reload();
       return CommandDispatch.queued;

@@ -12,7 +12,11 @@ final traccarApiProvider = Provider<TraccarApi?>((ref) {
   final server = session?.server;
   final token = session?.token;
   if (server == null || token == null || token.isEmpty) return null;
-  return TraccarApi(server: server, token: token);
+  return TraccarApi(
+    server: server,
+    token: token,
+    onUnauthorized: () => ref.read(sessionProvider.notifier).invalidate(),
+  );
 });
 
 /// 便于测试与诊断页展示；正式请求请使用 [traccarApiProvider]。

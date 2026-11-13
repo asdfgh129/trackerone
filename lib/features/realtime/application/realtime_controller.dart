@@ -263,17 +263,21 @@ class RealtimeController extends AsyncNotifier<RealtimeState> {
     if (api == null) return;
     final previous = state.valueOrNull;
     state = const AsyncLoading<RealtimeState>();
+    final snapshot = await _loadSnapshot(
+      api,
+      cached: previous == null
+          ? null
+          : CachedRealtime(
+              devices: previous.devices.values.toList(growable: false),
+              positions: previous.positions.values.toList(growable: false),
+              events: previous.events,
+              updatedAt: DateTime.now(),
+            ),
+    );
+    // 拉取快照期间 WebSocket 可能仍保持连接，不能用默认的 false 覆盖。
     state = AsyncData(
-      await _loadSnapshot(
-        api,
-        cached: previous == null
-            ? null
-            : CachedRealtime(
-                devices: previous.devices.values.toList(growable: false),
-                positions: previous.positions.values.toList(growable: false),
-                events: previous.events,
-                updatedAt: DateTime.now(),
-              ),
+      snapshot.copyWith(
+        connected: _socket?.status == SocketStatus.connected,
       ),
     );
     _socket?.connect();

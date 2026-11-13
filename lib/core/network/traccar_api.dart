@@ -51,10 +51,19 @@ class AuthResult {
 }
 
 class TraccarApi {
-  TraccarApi({required this.server, String? token}) : _token = token;
+  TraccarApi({
+    required this.server,
+    String? token,
+    this.onUnauthorized,
+  }) : _token = token;
 
   final ServerProfile server;
   final String? _token;
+
+  /// 认证请求返回 401 时回调，用于全局清理会话。
+  ///
+  /// 登录/探活等未认证请求不要传，避免把「密码错误」误判为会话失效。
+  final void Function()? onUnauthorized;
 
   Dio _createDio({CookieJar? cookieJar}) {
     final dio = Dio(
@@ -83,6 +92,20 @@ class TraccarApi {
 
     if (cookieJar != null) {
       dio.interceptors.add(CookieManager(cookieJar));
+    }
+
+    // 认证请求统一拦截 401，避免每个页面重复处理过期 Token。
+    if (onUnauthorized != null && _token != null && _token.isNotEmpty) {
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onError: (error, handler) {
+            if (error.response?.statusCode == 401) {
+              onUnauthorized?.call();
+            }
+            handler.next(error);
+          },
+        ),
+      );
     }
     return dio;
   }
@@ -388,7 +411,7 @@ class TraccarApi {
         );
       case 400:
         return AppFailure(
-          FailureKind.server,
+          FailureKind.invalidRequest,
           serverMessage ?? '请求参数不正确',
           statusCode: status,
           cause: error,

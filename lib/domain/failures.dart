@@ -17,6 +17,9 @@ enum FailureKind {
   /// 404：资源或接口不存在。
   notFound,
 
+  /// 400：请求参数不合法。重试无意义，应提示用户修正输入。
+  invalidRequest,
+
   /// TLS / 证书错误。
   tls,
 

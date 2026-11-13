@@ -9,8 +9,8 @@
 - [ ] 更新 `lib/core/config/brand.dart` 中的应用名、支持邮箱、隐私政策 URL
 - [ ] 应用图标（Android adaptive icon / iOS AppIcon）与启动页
 - [ ] 应用名称在多语言下不截断
-- [ ] 高德 Key 与最终包名/Bundle ID 绑定并重新申请
-- [ ] 极光 AppKey / 厂商通道绑定最终包名与签名
+- [ ] 高德 Key 与最终包名/Bundle ID 绑定：Android ✅（`3c5c…370f`），iOS 待申请
+- [ ] 极光 AppKey / 厂商通道绑定：AppKey ✅（`2e61…1d62`），厂商通道待配置
 
 ## 2. Android 签名
 
@@ -72,9 +72,9 @@ xcrun altool --upload-app --type ios \
 
 ## 4. 版本与构建号
 
-- [ ] `pubspec.yaml` 的 `version` 已递增（语义化）；
-- [ ] Android `versionCode` 由 Flutter 自动生成，确认大于上一版；
-- [ ] iOS `CFBundleShortVersionString` / `CFBundleVersion` 正确；
+- [x] `pubspec.yaml` 的 `version` 已递增（语义化，当前 0.4.0+4）；
+- [x] Android `versionCode` 由 Flutter 自动生成，确认大于上一版；
+- [x] iOS `CFBundleShortVersionString` / `CFBundleVersion` 正确；
 - [ ] 构建号写入关于页与诊断日志，便于定位线上问题；
 - [ ] 保留 mapping / dSYM 文件用于崩溃符号化。
 
@@ -82,11 +82,11 @@ xcrun altool --upload-app --type ios \
 
 - [ ] 隐私政策 URL 可访问，内容覆盖定位、地图、推送、崩溃上报；
 - [ ] 个人信息收集清单、第三方 SDK 清单（高德、极光、厂商通道、Firebase）；
-- [ ] 用户同意前不初始化地图/推送/统计 SDK；
-- [ ] 提供账号注销与数据删除入口（当前仅有“清除本地数据”，需服务端配合）；
+- [ ] 用户同意隐私政策前不初始化地图/推送/统计 SDK（地图已独立授权；**缺少首启全局隐私弹窗**）
+- [x] 提供账号注销与数据删除入口（已接 `DELETE /api/users/{id}`，服务端策略待确认）
 - [ ] APP 备案号、ICP 备案、地图审图号展示在设置/关于页；
 - [ ] Android 权限用途说明与隐私弹窗；
-- [ ] iOS 隐私清单（`PrivacyInfo.xcprivacy`）与 App Store 隐私问卷；
+- [x] iOS 隐私清单 `PrivacyInfo.xcprivacy` 已添加并加入 Runner 资源；App Store 隐私问卷待填写
 - [ ] 应用截图、描述、关键词、年龄分级、联系方式；
 - [ ] 国内商店软著/资质（按各商店要求）。
 
@@ -101,9 +101,9 @@ flutter build apk --debug
 flutter build ios --simulator --no-codesign
 ```
 
-- [ ] `dart analyze` 0 issue；
-- [ ] `flutter test` 全绿；
-- [ ] 35 个 ARB 文件 key 与占位符一致；
+- [x] `dart analyze` 0 issue；
+- [x] `flutter test` 全绿（73 项）；
+- [x] 35 个 ARB 文件 key 与占位符一致；
 - [ ] 真机测试矩阵（docs/11）P0 用例通过；
 - [ ] 后台上报 24h / 72h 数据达标；
 - [ ] 500/1000 设备地图 ≥ 30fps（或记录明确风险）；
@@ -136,8 +136,8 @@ flutter build ios --simulator --no-codesign
 ## 9. 发布前最后检查
 
 - [ ] 关闭调试入口与 `SIMULATE_DEVICES`；
-- [ ] 确认 `PUSH_PROVIDER` / `MAP_PROVIDER` 为生产值；
-- [ ] 确认无测试服务器地址、测试账号、测试 Key；
+- [x] 确认 `PUSH_PROVIDER` / `MAP_PROVIDER` 为生产值（默认 `jpush` / `amap`）；
+- [ ] 确认无测试服务器地址、测试账号、测试 Key（`Brand.demoServerUrl` 仍为 demo）；
 - [ ] 确认日志不输出 Token、密码、完整位置；
-- [ ] 确认 `tool/release_check.sh` 通过；
+- [x] 确认 `tool/release_check.sh` 通过；
 - [ ] 归档构建产物、mapping、dSYM、测试矩阵结果与签名证书备份。

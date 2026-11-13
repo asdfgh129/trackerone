@@ -89,13 +89,14 @@
 
 ### P0（上架阻断）
 
-1. ✅ **真实包名/Bundle ID**：已改为 `com.trackerone.app`（Android + iOS）；高德/极光仍需按新包名申请并绑定。
+1. 🟡 **真实包名/Bundle ID 与 Key**：包名已统一为 `com.trackerone.app`；高德 Android Key、极光 AppKey 已内置；**iOS 高德 Key 仍待申请**。
 2. ⛔ **真机后台上报 24h/72h**：无法用模拟器替代，必须实测耗电与断点。
-3. ⛔ **推送端到端**：AppKey、厂商通道、网关、Traccar webhook 均未真实联通。
-4. ⛔ **合规材料**：APP 备案号、ICP、地图审图号、第三方 SDK 清单、隐私政策正式版。
+3. 🟡 **推送端到端**：AppKey 与客户端 alias 逻辑已完成；APNs `.p8`、厂商通道、推送网关、Traccar webhook 仍未真实联通。
+4. ⛔ **合规材料与首启隐私**：APP 备案号、ICP、地图审图号、第三方 SDK 清单、隐私政策正式版均未准备；**首次启动缺少全局隐私政策同意页**（当前只有地图 SDK 独立授权）。
 5. 🟡 **账号注销与数据删除**：已实现“清理 drift 缓存/指令队列/推送 alias/账号 JSON”与 `DELETE /api/users/{id}` 注销入口；普通用户若被服务端拒绝会提示联系管理员。服务端自助注销策略仍需确认。
-6. 🟡 **正式签名**：Android 上传密钥已生成并接入（`android/key.properties` + `upload-keystore.jks`，release 缺签名会直接失败）；iOS 仍需 Apple 开发者账号、Team ID、证书/描述文件与 APNs Key。
-7. ⛔ **应用图标/启动页/商店截图**：仍为默认 Flutter 资源。
+6. 🟡 **正式签名**：Android 上传密钥已生成并接入（release 缺签名会直接失败）；iOS 仍需 Apple 开发者账号、Team ID、证书/描述文件与 APNs Key。`PrivacyInfo.xcprivacy` 已添加并纳入 Runner 资源。
+7. ⛔ **应用图标/启动页/商店截图**：Android 图标与 Flutter 模板 MD5 完全一致，仍为默认资源；无 adaptive icon、无商店素材。
+8. 🟡 **Android 权限最小化**：`AD_ID`、`ACCESS_ADSERVICES_AD_ID`、`ACCESS_ADSERVICES_ATTRIBUTION`、`BIND_GET_INSTALL_REFERRER_SERVICE` 已通过 manifest `tools:node="remove"` 移除；`READ_PHONE_STATE`、`QUERY_ALL_PACKAGES`、`WRITE/READ_EXTERNAL_STORAGE` 来自 JPush SDK，需真机验证推送后处理。
 
 ### P1（体验与完整性）
 
@@ -107,11 +108,24 @@
 6. **免打扰/通知偏好**：未实现按事件类型或时段静音。
 7. **SOS/快捷开关/桌面小组件**：路线图 P1，未实现。
 8. **OIDC/SSO、多服务器切换 UI**：服务器档案可存多个，但切换与 OIDC 未完成。
-9. **错误文案国际化**：网络/领域层错误仍为中文硬编码（`traccar_api.dart`、
-   `server_profile.dart` 等），非中文界面会混入中文。
+9. **错误文案国际化**：网络/领域层仍有约 58 处中文硬编码（`traccar_api.dart`、
+   `server_profile.dart` 等），非中文界面会混入中文；iOS 权限弹窗文案也只有中文。
 10. **无障碍**：图标按钮部分有 tooltip，但缺少系统性的语义标签与 200% 字体回归。
 11. **横屏/平板**：未做专门布局。
 12. **性能实测**：聚合与合流代码已就位，但未记录 500/1000 设备帧率与内存。
+
+### P1 代码缺陷修复（2026-11-13）
+
+| 问题 | 处理 | 状态 |
+|---|---|---|
+| HTTP 400 被当作可重试 `server` | 新增 `FailureKind.invalidRequest`，不自动重试 | ✅ |
+| 离线入队也消耗 `attempts` | 新增 `CommandQueue.markQueued()`，保持 pending 且不计数 | ✅ |
+| 进程中断后 `sending` 永久卡住 | 启动时 `recoverInterrupted()` 恢复为 pending | ✅ |
+| `RealtimeController.refresh()` 丢失 `connected` | 以 WebSocket 实际状态回填 | ✅ |
+| 通用 REST 401 无全局登出 | `TraccarApi` 增加 `onUnauthorized` 拦截器并接入会话 | ✅ |
+| `home_screen.dart` 死代码 | 已删除 | ✅ |
+| 事件固定 24h、历史无分页/上限 | 未处理 | ⛔ |
+| 约 58 处中文硬编码 | 未处理 | ⛔ |
 
 ### P2（工程与运维）
 
@@ -119,7 +133,7 @@
 2. 缺少集成测试（`integration_test/`）与 golden 测试。
 3. 崩溃上报国内仍为 Noop（Bugly 未接）。
 4. 远程配置开关、证书固定、离线瓦片、二维码/MDM 批量配置未实现。
-5. `lib/features/home/home_screen.dart` 为早期占位页，未被路由引用，可删除。
+5. ✅ `lib/features/home/home_screen.dart` 占位页已删除（2026-11-13）。
 6. `docs/06-roadmap.md` 的进度描述需随本轮更新。
 7. `privacyUrl` 等品牌值仍为占位，需在发布前替换。
 
@@ -155,18 +169,20 @@
 - [ ] 备案号/审图号/隐私政策/SDK 清单可在应用内看到；
 - [ ] 账号注销与数据删除可实际执行。
 
-## 8. 本轮本地验证结果（2026-11-06）
+## 8. 本轮本地验证结果（2026-11-13）
 
 | 检查 | 命令 | 结果 |
 |---|---|---|
 | 静态分析 | `dart analyze lib test` | ✅ 0 issue |
-| 单元/组件测试 | `flutter test` | ✅ 71 通过（新增缓存/指令 `clearAll` 用例） |
+| 单元/组件测试 | `flutter test` | ✅ 73 通过（新增缓存/指令恢复用例） |
 | 35 语言 ARB | `tool/release_check.sh --fast` | ✅ 35 个文件、320 个 key 与占位符一致（含 `@@locale`） |
 | Android 构建 | `flutter build apk --release` | ✅ `build/app/outputs/flutter-apk/app-release.apk`（`com.trackerone.app`） |
 | Android AAB | `flutter build appbundle --release` | ✅ `build/app/outputs/bundle/release/app-release.aab` |
 | iOS 构建 | `flutter build ios --release --no-codesign` | ✅ 真机 arm64 产物；未签名 IPA 已生成 |
 | 发布自检 | `tool/release_check.sh --fast` | ✅ 通过（iOS 签名团队仍待配置） |
 | 签名配置 | Gradle `hasReleaseSigning` | ✅ 已配置正式上传密钥；缺少 `key.properties` 时 release 构建直接失败 |
+| Android 权限 | `aapt2 dump permissions` | ✅ `AD_ID` / `ACCESS_ADSERVICES_*` 已移除；JPush 的 `READ_PHONE_STATE` 等仍保留 |
+| iOS 隐私清单 | `Runner.app/PrivacyInfo.xcprivacy` | ✅ 已编入 Runner 资源 |
 
 > 以上结果证明“代码可编译、可测试、可自检”，不代表真机验收通过。
 > 真机、推送凭据、性能数据与正式签名仍按第 4 节 P0 清单执行。
