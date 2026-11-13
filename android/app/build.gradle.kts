@@ -8,7 +8,7 @@ plugins {
 }
 
 // 发布签名：复制 android/key.properties.example 为 android/key.properties。
-// 文件不存在时回退到 debug 签名，保证 `flutter run` 与 CI 自检可用。
+// 文件不存在时 release 构建会直接失败（见 beforeVariants）。
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -36,11 +36,11 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        // 极光推送占位配置：未配置时 PUSH_PROVIDER=none，不影响启动。
-        // 正式构建请通过 -Pjpush.appKey=... 或 local.properties 注入。
+        // 极光推送：默认使用正式 AppKey，可通过 -Pjpush.appKey=... 覆盖。
         manifestPlaceholders["JPUSH_PKGNAME"] = applicationId!!
         manifestPlaceholders["JPUSH_APPKEY"] =
-            (project.findProperty("jpush.appKey") as String?) ?: ""
+            (project.findProperty("jpush.appKey") as String?)
+                ?: "2e6135fffb1db1d409ab1d62"
         manifestPlaceholders["JPUSH_CHANNEL"] =
             (project.findProperty("jpush.channel") as String?) ?: "developer-default"
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION

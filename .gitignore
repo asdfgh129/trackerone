@@ -42,6 +42,7 @@ environment/
 
 # OS
 .DS_Store
+._*
 
 # Python tool cache
 __pycache__/

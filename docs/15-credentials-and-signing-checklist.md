@@ -80,16 +80,25 @@ API 域名              : 待定（建议 track.<公司域名>）
    - 应用类型：出行/导航
 3. 为同一应用添加 **Android Key**：
    - Key 名称：`TrackerOne-Android-Release`
-   - 绑定包名：`com.<公司>.trackerone`
+   - 绑定包名：`com.trackerone.app`
    - 绑定 SHA1：**release keystore 的 SHA1**
    - 如要支持 debug 包，再建一个 Key 绑定 debug SHA1。
 4. 为同一应用添加 **iOS Key**：
    - Key 名称：`TrackerOne-iOS`
-   - 绑定 Bundle ID：`com.<公司>.trackerone`
+   - 绑定 Bundle ID：`com.trackerone.app`
 5. 记录：
    - `AMAP_ANDROID_KEY`
    - `AMAP_IOS_KEY`
 6. 在控制台/文档获取**地图审图号**，后续展示在「关于」页。
+
+> **当前进度（2026-11-13）**
+>
+> - Android Key：`3c5cfa8ef73973fb579289710cc2370f`（已写入
+>   `lib/core/config/build_config.dart` 默认值，release 构建自动生效）
+> - iOS Key：待申请（Bundle ID 使用 `com.trackerone.app`）
+> - Release SHA1：`0B:21:56:4F:7E:F3:91:9E:60:35:68:1D:84:88:D9:FD:D6:AB:0E:E9`
+> - Debug SHA1（模拟器/调试包需要单独绑定）：
+>   `1F:1D:98:73:A1:7B:7B:88:FF:6C:8B:98:BB:71:A4:41:5C:81:39:85`
 
 ### 2.3 获取 SHA1
 
@@ -114,18 +123,16 @@ keytool -list -v \
 
 ### 2.4 项目注入
 
+Android Key 已内置默认值，正常构建无需再传：
+
 ```bash
-flutter build apk --release \
-  --dart-define=MAP_PROVIDER=amap \
-  --dart-define=AMAP_ANDROID_KEY="$AMAP_ANDROID_KEY" \
-  --dart-define=AMAP_IOS_KEY="$AMAP_IOS_KEY"
+flutter build apk --release
 ```
 
-iOS：
+需要切换 Key（例如 CI 或多环境）时再覆盖：
 
 ```bash
-flutter build ipa --release \
-  --dart-define=MAP_PROVIDER=amap \
+flutter build apk --release \
   --dart-define=AMAP_ANDROID_KEY="$AMAP_ANDROID_KEY" \
   --dart-define=AMAP_IOS_KEY="$AMAP_IOS_KEY"
 ```
@@ -156,8 +163,8 @@ flutter build ipa --release \
 1. 注册极光账号，完成实名/企业认证。
 2. 创建应用：
    - 应用名称：`TrackerOne`
-   - Android 包名：`com.<公司>.trackerone`
-   - iOS Bundle ID：`com.<公司>.trackerone`
+   - Android 包名：`com.trackerone.app`
+   - iOS Bundle ID：`com.trackerone.app`
 3. 记录：
    - `JPUSH_APP_KEY`（客户端可公开）
    - `JPUSH_MASTER_SECRET`（**只能放服务端/CI，绝不能进 App 或 git**）
@@ -169,9 +176,16 @@ flutter build ipa --release \
    - 在极光后台绑定包名与签名；
    - 逐个开通厂商通道（见第 4 节）。
 
+> **当前进度（2026-11-13）**
+>
+> - AppKey：`2e6135fffb1db1d409ab1d62` 已写入 Dart 默认值与
+>   `android/app/build.gradle.kts` 的 `JPUSH_APPKEY` 占位符；
+> - `PUSH_PROVIDER` 默认值已改为 `jpush`，release 构建自动启用；
+> - 厂商通道与 APNs 仍未配置，锁屏到达率需在配置后实测。
+
 ### 3.3 项目注入（注意 Android 有两处）
 
-Dart 层：
+Dart 层（AppKey 已内置默认值，以下仅用于覆盖）：
 
 ```bash
 --dart-define=PUSH_PROVIDER=jpush
@@ -179,7 +193,7 @@ Dart 层：
 --dart-define=JPUSH_CHANNEL="developer-default"
 ```
 
-Android 原生清单占位符（`android/app/build.gradle.kts:42-46`）：
+Android 原生清单占位符（`android/app/build.gradle.kts:42-46`）已内置同一 AppKey：
 
 ```properties
 # android/gradle.properties（AppKey 可公开，但仍建议 CI 注入）
@@ -650,10 +664,10 @@ flutter build apk --release \
 |---|---|---|---|---|
 | 正式包名 | `com.trackerone.app` | 已定稿 | `android/app/build.gradle.kts` | ✅ |
 | iOS Bundle ID | `com.trackerone.app` | 已定稿 | Xcode / App ID | ✅ |
-| 高德 Android Key |  | 高德控制台 | `--dart-define` | ☐ |
+| 高德 Android Key | `3c5cfa8ef73973fb579289710cc2370f` | 高德控制台 | `build_config.dart` 默认值 | ✅ |
 | 高德 iOS Key |  | 高德控制台 | `--dart-define` | ☐ |
 | 地图审图号 |  | 高德控制台 | 关于页 | ☐ |
-| 极光 AppKey |  | 极光控制台 | dart-define + gradle | ☐ |
+| 极光 AppKey | `2e6135fffb1db1d409ab1d62` | 极光控制台 | `build_config.dart` + Gradle 占位符 | ✅ |
 | 极光 Master Secret |  | 极光控制台 | 服务端 Secret | ☐ |
 | 小米 AppSecret |  | 小米控制台 | 极光后台 | ☐ |
 | 华为 AppId/Secret |  | AGC | 极光后台 | ☐ |

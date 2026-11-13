@@ -11,6 +11,8 @@
 - “清除本地数据”、退出登录、401、删除服务器、注销账号均会清理对应本地数据
 - 推送 `PushGateway` 新增 `deleteAlias()`：极光解绑 alias，FCM 取消 topic 订阅
 - 新增“注销账号”入口，调用 `DELETE /api/users/{id}`；403 时提示联系管理员
+- 内置高德 Android Key 与极光 AppKey（`BuildConfig` 默认值 + Gradle 占位符），
+  `PUSH_PROVIDER` 默认改为 `jpush`，release 构建自动启用地图与推送
 - 新增 7 个设置类 ARB key，35 语言同步
 - 新增缓存/指令 `clearAll` 单元测试；`flutter test` 71 项通过
 

@@ -29,8 +29,12 @@ abstract final class BuildConfig {
   );
 
   /// 高德开放平台 Key，Android 与 iOS 需分别申请（与包名 / Bundle ID 绑定）。
+  ///
+  /// 默认值仅用于本项目的正式 Android 包 `com.trackerone.app`；
+  /// 其他环境仍可用 `--dart-define=AMAP_ANDROID_KEY=...` 覆盖。
   static const String amapAndroidKey = String.fromEnvironment(
     'AMAP_ANDROID_KEY',
+    defaultValue: '3c5cfa8ef73973fb579289710cc2370f',
   );
   static const String amapIosKey = String.fromEnvironment('AMAP_IOS_KEY');
 
@@ -40,10 +44,15 @@ abstract final class BuildConfig {
   /// - `none`：未接入，仅应用内 WebSocket 事件
   static const String pushProvider = String.fromEnvironment(
     'PUSH_PROVIDER',
-    defaultValue: 'none',
+    defaultValue: 'jpush',
   );
 
-  static const String jpushAppKey = String.fromEnvironment('JPUSH_APP_KEY');
+  /// 极光 AppKey（与包名 `com.trackerone.app` 绑定）。
+  /// 可用 `--dart-define=JPUSH_APP_KEY=...` 覆盖。
+  static const String jpushAppKey = String.fromEnvironment(
+    'JPUSH_APP_KEY',
+    defaultValue: '2e6135fffb1db1d409ab1d62',
+  );
   static const String jpushChannel = String.fromEnvironment(
     'JPUSH_CHANNEL',
     defaultValue: 'developer-default',
