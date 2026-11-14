@@ -183,8 +183,8 @@ curl -X POST https://push.example.com/webhooks/traccar \
 - AppKey 可公开，Master Secret 只能保存在服务端/CI Secret；
 - 网关必须鉴权、限流、记录审计日志；
 - 通知文案避免完整车牌/手机号等敏感信息，可按用户设置脱敏；
-- 推送 SDK 必须在用户同意隐私政策后初始化（当前由登录后注册触发，
-  首次启动不会初始化）；
+- 推送 SDK 必须在用户同意隐私政策后初始化（已由首启隐私同意页统一管控，
+  同意前不会初始化任何第三方 SDK）；
 - 第三方 SDK 清单中必须列出极光、厂商通道与地图 SDK；
 - 不向境外服务器发送中国大陆用户数据；海外包使用 FCM 单独配置。
 
@@ -194,8 +194,9 @@ curl -X POST https://push.example.com/webhooks/traccar \
 |---|---|
 | 客户端 alias 注册、点击深链、远程指令 | ✅ 代码完成 |
 | 推送诊断（通道/alias/状态/错误/最近消息） | ✅ 代码完成 |
-| 极光 AppKey / 厂商通道资质 | ⛔ 待申请 |
-| 推送网关部署与 Traccar webhook | ⛔ 待后端联调 |
+| 隐私同意后才初始化推送 SDK | ✅ 本轮完成 |
+| 极光 AppKey / 厂商通道资质 | ⛔ 待申请（步骤见 [docs/16](16-push-ops-runbook.md)） |
+| 推送网关部署与 Traccar webhook | ⛔ 待后端联调（网关代码可由我方实现） |
 | 真机锁屏/冷启动验证 | ⛔ 待真机 |
 | 退出登录解绑 alias | 🟡 代码路径存在，需真机确认 |
 

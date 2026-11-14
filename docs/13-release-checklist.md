@@ -10,7 +10,7 @@
 - [ ] 应用图标（Android adaptive icon / iOS AppIcon）与启动页
 - [ ] 应用名称在多语言下不截断
 - [ ] 高德 Key 与最终包名/Bundle ID 绑定：Android ✅（`3c5c…370f`），iOS 待申请
-- [ ] 极光 AppKey / 厂商通道绑定：AppKey ✅（`2e61…1d62`），厂商通道待配置
+- [ ] 极光 AppKey / 厂商通道绑定：AppKey ✅（`2e61…1d62`），厂商通道待配置（步骤见 [docs/16](16-push-ops-runbook.md)）
 
 ## 2. Android 签名
 
@@ -82,7 +82,7 @@ xcrun altool --upload-app --type ios \
 
 - [ ] 隐私政策 URL 可访问，内容覆盖定位、地图、推送、崩溃上报；
 - [ ] 个人信息收集清单、第三方 SDK 清单（高德、极光、厂商通道、Firebase）；
-- [ ] 用户同意隐私政策前不初始化地图/推送/统计 SDK（地图已独立授权；**缺少首启全局隐私弹窗**）
+- [ ] 用户同意隐私政策前不初始化地图/推送/统计 SDK（✅ 首启全局隐私弹窗已完成；地图仍有独立授权）
 - [x] 提供账号注销与数据删除入口（已接 `DELETE /api/users/{id}`，服务端策略待确认）
 - [ ] APP 备案号、ICP 备案、地图审图号展示在设置/关于页；
 - [ ] Android 权限用途说明与隐私弹窗；
@@ -102,7 +102,7 @@ flutter build ios --simulator --no-codesign
 ```
 
 - [x] `dart analyze` 0 issue；
-- [x] `flutter test` 全绿（73 项）；
+- [x] `flutter test` 全绿（78 项）；
 - [x] 35 个 ARB 文件 key 与占位符一致；
 - [ ] 真机测试矩阵（docs/11）P0 用例通过；
 - [ ] 后台上报 24h / 72h 数据达标；

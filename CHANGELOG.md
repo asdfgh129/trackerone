@@ -19,7 +19,10 @@
 - 移除未使用的 `firebase_analytics` 依赖，并通过 manifest 移除 `AD_ID` 等广告权限
 - 新增 iOS `PrivacyInfo.xcprivacy` 并加入 Runner 资源（声明定位/账号/崩溃数据，无跟踪）
 - 删除无引用的 `lib/features/home/home_screen.dart` 占位页
-- 新增缓存/指令 `clearAll` 单元测试；`flutter test` 71 项通过
+- 新增首启全局隐私政策同意页（`PrivacyConsentGate`），同意前不初始化地图/推送/崩溃上报 SDK
+- 新增隐私授权开关与撤回入口（撤回会清地图授权、解绑推送 alias 并回到同意页）
+- 新增 18 个隐私相关 ARB key，35 语言同步
+- 新增缓存/指令 `clearAll` 与隐私授权单元测试；`flutter test` 78 项通过
 
 ## 0.4.0
 

@@ -416,5 +416,55 @@
         "type": "int"
       }
     }
-  }
+  },
+  "privacyConsentTitle": "Privacy Policy and Terms of Service",
+  "@privacyConsentTitle": {
+    "description": "First-launch consent page title."
+  },
+  "privacyConsentIntro": "Welcome to {appName}. Please read and accept the following before you start.",
+  "@privacyConsentIntro": {
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyConsentBody": "After you agree, we process: location (for live position, history and alerts), account details (server address and username), device identifiers and crash logs. Map and push SDKs are initialized only after your consent.",
+  "@privacyConsentBody": {
+    "description": "Must match the privacy policy and the third-party SDK list."
+  },
+  "privacyConsentPolicy": "Privacy Policy",
+  "@privacyConsentPolicy": {
+    "description": "Link label, also used in settings."
+  },
+  "privacyConsentTerms": "Terms of Service",
+  "@privacyConsentTerms": {
+    "description": "Link label, also used in settings."
+  },
+  "privacyConsentAgree": "Agree and continue",
+  "@privacyConsentAgree": {},
+  "privacyConsentDisagree": "Disagree",
+  "@privacyConsentDisagree": {},
+  "privacyConsentDisagreeTitle": "Unable to continue",
+  "@privacyConsentDisagreeTitle": {},
+  "privacyConsentDisagreeBody": "Without consent we will not initialize the map or push SDK, and we will not collect location data. You can close the app.",
+  "@privacyConsentDisagreeBody": {},
+  "privacyConsentExit": "Close app",
+  "@privacyConsentExit": {},
+  "privacyConsentReconsider": "Go back",
+  "@privacyConsentReconsider": {},
+  "privacyConsentLinkFailed": "Unable to open the link. Please check the address.",
+  "@privacyConsentLinkFailed": {},
+  "settingsPrivacySection": "Privacy and compliance",
+  "@settingsPrivacySection": {},
+  "settingsPrivacyConsent": "Privacy policy consent",
+  "@settingsPrivacyConsent": {},
+  "settingsPrivacyConsentBody": "Turning this off stops map and push SDKs and shows the consent page again.",
+  "@settingsPrivacyConsentBody": {},
+  "settingsPrivacyRevokeTitle": "Withdraw privacy consent",
+  "@settingsPrivacyRevokeTitle": {},
+  "settingsPrivacyRevokeBody": "Maps will be unavailable and push will be unbound. Withdraw anyway?",
+  "@settingsPrivacyRevokeBody": {},
+  "settingsPrivacyRevokeAction": "Withdraw",
+  "@settingsPrivacyRevokeAction": {}
 }

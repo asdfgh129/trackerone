@@ -150,6 +150,8 @@ tool/release_check.sh --fast
 - 极光/网关联调：[docs/12-push-integration.md](docs/12-push-integration.md)
 - 发布清单：[docs/13-release-checklist.md](docs/13-release-checklist.md)
 - 开发计划差距分析：[docs/14-roadmap-gap-analysis.md](docs/14-roadmap-gap-analysis.md)
+- Key/签名/资质申请：[docs/15-credentials-and-signing-checklist.md](docs/15-credentials-and-signing-checklist.md)
+- 推送落地操作手册：[docs/16-push-ops-runbook.md](docs/16-push-ops-runbook.md)
 
 原生权限、`allowNativeHeapPointerTagging=false`、iOS Background Modes、
 极光厂商通道等已按 [`docs/10-setup-runbook.md`](docs/10-setup-runbook.md) 写入平台工程；

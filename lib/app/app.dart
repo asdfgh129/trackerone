@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/brand.dart';
+import '../features/onboarding/presentation/privacy_consent_screen.dart';
 import '../features/settings/application/locale_controller.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
@@ -24,6 +25,10 @@ class TrackerOneApp extends ConsumerWidget {
       darkTheme: buildTheme(Brightness.dark),
       themeMode: ThemeMode.system,
       routerConfig: router,
+      // 未同意隐私政策前拦截整个 App，避免地图 / 推送 SDK 提前初始化。
+      builder: (context, child) => PrivacyConsentGate(
+        child: child ?? const SizedBox.shrink(),
+      ),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

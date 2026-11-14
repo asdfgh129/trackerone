@@ -26,8 +26,13 @@ Deep link scheme      : trackerone
 API 域名              : 待定（建议 track.<公司域名>）
 推送网关域名          : 待定（建议 push.<公司域名>）
 隐私政策 URL          : 待定（Brand.privacyUrl）
+用户协议 URL          : 待定（Brand.termsUrl）
 支持邮箱              : 待定（Brand.supportUrl）
 ```
+
+> 首启隐私同意页已接入（`lib/features/onboarding/presentation/privacy_consent_screen.dart`），
+> 同意页内的两个链接都读 `Brand.privacyUrl` / `Brand.termsUrl`，**上架前必须替换为可访问的正式地址**，
+> 否则商店审核会判定隐私政策不可达。
 
 > 如果公司要求使用自有反向域名（如 `com.yourcompany.trackerone`），
 > 必须在申请高德/极光 Key **之前**改完。当前代码、Gradle、Xcode 已统一为

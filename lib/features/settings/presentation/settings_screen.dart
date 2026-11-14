@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/brand.dart';
+import '../../../core/links/external_link.dart';
 import '../../../core/localization/app_languages.dart';
 import '../../../core/map/map_privacy_consent.dart';
+import '../../../core/privacy/privacy_consent.dart';
 import '../../../core/storage/app_preferences.dart';
 import '../../../core/storage/local_data_cleaner.dart';
 import '../../../core/storage/token_store.dart';
@@ -118,7 +122,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            l10n.settingsDataSection,
+            l10n.settingsPrivacySection,
             style: Theme.of(context).textTheme.labelLarge,
           ),
           const SizedBox(height: 8),
@@ -126,11 +130,50 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined),
-                  title: Text(l10n.settingsPrivacy),
-                  subtitle: Text(Brand.privacyUrl),
+                  leading: const Icon(Icons.verified_user_outlined),
+                  title: Text(l10n.settingsPrivacyConsent),
+                  subtitle: Text(l10n.settingsPrivacyConsentBody),
+                  trailing: Switch(
+                    value: ref.watch(privacyConsentProvider).valueOrNull ?? false,
+                    onChanged: (value) {
+                      if (value) {
+                        unawaited(
+                          ref.read(privacyConsentProvider.notifier).agree(),
+                        );
+                      } else {
+                        unawaited(_revokePrivacy(context, ref));
+                      }
+                    },
+                  ),
                 ),
                 const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: Text(l10n.privacyConsentPolicy),
+                  subtitle: Text(Brand.privacyUrl),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _openUrl(context, Brand.privacyUrl),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(l10n.privacyConsentTerms),
+                  subtitle: Text(Brand.termsUrl),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _openUrl(context, Brand.termsUrl),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.settingsDataSection,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
                 ListTile(
                   leading: const Icon(Icons.delete_sweep_outlined),
                   title: Text(l10n.settingsClearData),
@@ -354,6 +397,43 @@ class SettingsScreen extends ConsumerWidget {
         SnackBar(content: Text(l10n.commonDone)),
       );
     }
+  }
+
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final opened = await openExternalUrl(url);
+    if (opened || !context.mounted) return;
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.privacyConsentLinkFailed)),
+    );
+  }
+
+  /// 撤回隐私授权：停止跟踪、解绑推送、清地图授权，并回到授权页。
+  Future<void> _revokePrivacy(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.settingsPrivacyRevokeTitle),
+        content: Text(l10n.settingsPrivacyRevokeBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.settingsPrivacyRevokeAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _stopTrackingIfNeeded(ref);
+    await ref.read(privacyConsentProvider.notifier).revoke();
   }
 }
 

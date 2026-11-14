@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/traccar_api.dart';
+import '../../../core/privacy/privacy_consent.dart';
 import '../../../core/push/push_gateway.dart';
 import '../../../core/push/push_service.dart';
 import '../../auth/application/session_controller.dart';
@@ -63,6 +64,12 @@ class PushRegistrationController extends AsyncNotifier<PushRegistrationState> {
     final gateway = ref.watch(pushGatewayProvider);
     final service = ref.watch(pushServiceProvider);
     final base = PushRegistrationState(providerId: gateway.id);
+
+    // 未同意隐私政策 / 正在读取授权状态时，绝不初始化推送 SDK。
+    final consentValue = ref.watch(privacyConsentProvider).valueOrNull;
+    if (consentValue != true) {
+      return base;
+    }
 
     final subscription = service.messages.listen((message) {
       final current = state.valueOrNull;

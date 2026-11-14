@@ -92,7 +92,9 @@
 1. 🟡 **真实包名/Bundle ID 与 Key**：包名已统一为 `com.trackerone.app`；高德 Android Key、极光 AppKey 已内置；**iOS 高德 Key 仍待申请**。
 2. ⛔ **真机后台上报 24h/72h**：无法用模拟器替代，必须实测耗电与断点。
 3. 🟡 **推送端到端**：AppKey 与客户端 alias 逻辑已完成；APNs `.p8`、厂商通道、推送网关、Traccar webhook 仍未真实联通。
-4. ⛔ **合规材料与首启隐私**：APP 备案号、ICP、地图审图号、第三方 SDK 清单、隐私政策正式版均未准备；**首次启动缺少全局隐私政策同意页**（当前只有地图 SDK 独立授权）。
+4. ⛔ **合规材料**：APP 备案号、ICP、地图审图号、第三方 SDK 清单、隐私政策正式版均未准备；
+   首启全局隐私政策同意页已完成（`PrivacyConsentGate`，同意前不初始化地图/推送/崩溃上报 SDK，
+   设置页可撤回授权），但 `Brand.privacyUrl` / `Brand.termsUrl` 仍是占位地址，需替换为正式 URL。
 5. 🟡 **账号注销与数据删除**：已实现“清理 drift 缓存/指令队列/推送 alias/账号 JSON”与 `DELETE /api/users/{id}` 注销入口；普通用户若被服务端拒绝会提示联系管理员。服务端自助注销策略仍需确认。
 6. 🟡 **正式签名**：Android 上传密钥已生成并接入（release 缺签名会直接失败）；iOS 仍需 Apple 开发者账号、Team ID、证书/描述文件与 APNs Key。`PrivacyInfo.xcprivacy` 已添加并纳入 Runner 资源。
 7. ⛔ **应用图标/启动页/商店截图**：Android 图标与 Flutter 模板 MD5 完全一致，仍为默认资源；无 adaptive icon、无商店素材。
@@ -126,6 +128,7 @@
 | `home_screen.dart` 死代码 | 已删除 | ✅ |
 | 事件固定 24h、历史无分页/上限 | 未处理 | ⛔ |
 | 约 58 处中文硬编码 | 未处理 | ⛔ |
+| 首启缺少全局隐私政策同意页 | 新增 `PrivacyConsentGate`，同意前不初始化地图/推送/崩溃上报 | ✅ |
 
 ### P2（工程与运维）
 
@@ -174,7 +177,7 @@
 | 检查 | 命令 | 结果 |
 |---|---|---|
 | 静态分析 | `dart analyze lib test` | ✅ 0 issue |
-| 单元/组件测试 | `flutter test` | ✅ 73 通过（新增缓存/指令恢复用例） |
+| 单元/组件测试 | `flutter test` | ✅ 78 通过（新增隐私授权 5 个用例） |
 | 35 语言 ARB | `tool/release_check.sh --fast` | ✅ 35 个文件、320 个 key 与占位符一致（含 `@@locale`） |
 | Android 构建 | `flutter build apk --release` | ✅ `build/app/outputs/flutter-apk/app-release.apk`（`com.trackerone.app`） |
 | Android AAB | `flutter build appbundle --release` | ✅ `build/app/outputs/bundle/release/app-release.aab` |

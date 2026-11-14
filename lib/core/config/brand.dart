@@ -7,6 +7,7 @@ abstract final class Brand {
   static const String deepLinkScheme = 'trackerone';
 
   static const String privacyUrl = 'https://example.com/privacy';
+  static const String termsUrl = 'https://example.com/terms';
   static const String supportUrl = 'https://example.com/support';
 
   /// 仅用于首次体验，正式环境必须替换为用户自己的服务器。

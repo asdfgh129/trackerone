@@ -9,6 +9,7 @@ Usage:
     python3 tool/translate_arb.py                # generate missing locales
     python3 tool/translate_arb.py --force        # regenerate everything except zh
     python3 tool/translate_arb.py --only de,fr   # only selected locales
+    python3 tool/translate_arb.py --missing      # only add keys missing from existing files
 
 `zh` is intentionally skipped because it is the hand-written source language.
 `kab` (Kabyle) is not supported by Bing; it is copied from English as a
@@ -275,9 +276,53 @@ def generate(
     print(f"done {locale}", flush=True)
 
 
+def fill_missing(
+    locale: str,
+    target: str | None,
+    source: OrderedDict[str, str],
+) -> None:
+    """Translate only keys missing from an existing ARB file.
+
+    Used after adding new keys to `app_en.arb`, without regenerating (and
+    thereby overwriting) reviewed translations.
+    """
+    output_path = os.path.join(L10N, f"app_{locale}.arb")
+    with open(output_path, encoding="utf-8") as handle:
+        existing = json.load(handle, object_pairs_hook=OrderedDict)
+
+    missing = [(key, value) for key, value in source.items() if key not in existing]
+    if not missing:
+        print(f"skip {locale} (up to date)", flush=True)
+        return
+
+    keys = [key for key, _ in missing]
+    values = [value for _, value in missing]
+    if target is None:
+        typed = values
+    else:
+        translator = BingTranslator()
+        typed = []
+        for start in range(0, len(values), BATCH_SIZE):
+            batch = values[start : start + BATCH_SIZE]
+            typed.extend(translator.translate(target, batch))
+            print(
+                f"  {locale} {min(start + BATCH_SIZE, len(values))}/{len(values)}",
+                flush=True,
+            )
+
+    data = OrderedDict(existing)
+    for key, value in zip(keys, typed):
+        data[key] = value
+    with open(output_path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    print(f"filled {locale} (+{len(keys)})", flush=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--missing", action="store_true")
     parser.add_argument("--only", default="")
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
@@ -294,17 +339,20 @@ def main() -> int:
     targets = [
         (locale, target)
         for locale, target in LANGUAGES.items()
-        if not only or locale in only
+        if (not only or locale in only) and locale != "zh"
     ]
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     failures = 0
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
-        futures = {
-            pool.submit(generate, locale, target, source, args.force): locale
-            for locale, target in targets
-        }
+        futures = {}
+        for locale, target in targets:
+            if args.missing:
+                future = pool.submit(fill_missing, locale, target, source)
+            else:
+                future = pool.submit(generate, locale, target, source, args.force)
+            futures[future] = locale
         for future in as_completed(futures):
             locale = futures[future]
             try:
