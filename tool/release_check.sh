@@ -111,6 +111,18 @@ if [[ "${SKIP_TEST:-0}" != "1" ]]; then
   if flutter test; then ok "flutter test"; else bad "flutter test"; fi
 fi
 
+if command -v go >/dev/null 2>&1; then
+  step "推送网关（Go）"
+  if (cd server/push-gateway && go vet ./... && go test ./...); then
+    ok "推送网关 go vet + go test"
+  else
+    bad "推送网关 go vet / go test"
+  fi
+else
+  step "推送网关（Go）"
+  warn "未安装 Go，跳过推送网关检查"
+fi
+
 step "完成"
 if [[ "$fail" == "0" ]]; then
   ok "发布自检通过"

@@ -36,6 +36,7 @@ ios/ExportOptions.plist
 # Env & secrets
 .env
 .env.*
+!.env.example
 environment/
 *.keystore
 *.jks

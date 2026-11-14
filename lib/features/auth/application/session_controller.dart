@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/traccar_api.dart';
+import '../../../core/push/push_gateway_registry.dart';
 import '../../../core/push/push_service.dart';
 import '../../../core/storage/app_preferences.dart';
 import '../../../core/storage/local_data_cleaner.dart';
@@ -191,6 +192,7 @@ class SessionController extends AsyncNotifier<SessionState> {
   }
 
   Future<void> _clearLocal(ServerProfile server) async {
+    final token = state.valueOrNull?.token ?? '';
     await ref.read(tokenStoreProvider).delete(server.id);
     await ref
         .read(appPreferencesProvider)
@@ -209,6 +211,17 @@ class SessionController extends AsyncNotifier<SessionState> {
     } catch (_) {
       // 推送 SDK 未初始化或网络异常时忽略。
     }
+
+    // 同步解绑自建推送网关里的别名。
+    final holder = ref.read(pushAliasHolderProvider);
+    final alias = holder.alias;
+    if (alias != null && alias.isNotEmpty && token.isNotEmpty) {
+      await ref.read(pushGatewayRegistryProvider).unregisterAlias(
+            alias: alias,
+            token: token,
+          );
+    }
+    holder.clear();
   }
 
   static Account? _parseAccount(String? raw) {

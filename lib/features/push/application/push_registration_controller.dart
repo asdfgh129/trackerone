@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/traccar_api.dart';
 import '../../../core/privacy/privacy_consent.dart';
 import '../../../core/push/push_gateway.dart';
+import '../../../core/push/push_gateway_registry.dart';
 import '../../../core/push/push_service.dart';
 import '../../auth/application/session_controller.dart';
 
@@ -100,6 +102,22 @@ class PushRegistrationController extends AsyncNotifier<PushRegistrationState> {
         serverId: info.id,
       );
       await service.initialize(userId: account.id, serverId: info.id);
+
+      // 同步别名到自建推送网关（未配置 PUSH_GATEWAY_URL 时自动跳过）。
+      final registered = await ref.read(pushGatewayRegistryProvider).registerAlias(
+            alias: alias,
+            token: session.token ?? '',
+            platform: defaultTargetPlatform == TargetPlatform.iOS
+                ? 'ios'
+                : 'android',
+          );
+      if (registered) {
+        ref.read(pushAliasHolderProvider).remember(
+              alias: alias,
+              token: session.token ?? '',
+            );
+      }
+
       return base.copyWith(
         alias: alias,
         registered: base.enabled,

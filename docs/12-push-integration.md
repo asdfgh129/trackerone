@@ -196,7 +196,7 @@ curl -X POST https://push.example.com/webhooks/traccar \
 | 推送诊断（通道/alias/状态/错误/最近消息） | ✅ 代码完成 |
 | 隐私同意后才初始化推送 SDK | ✅ 本轮完成 |
 | 极光 AppKey / 厂商通道资质 | ⛔ 待申请（步骤见 [docs/16](16-push-ops-runbook.md)） |
-| 推送网关部署与 Traccar webhook | ⛔ 待后端联调（网关代码可由我方实现） |
+| 推送网关部署与 Traccar webhook | 🟡 网关代码已完成（`server/push-gateway/`），待部署；Traccar 待打补丁 |
 | 真机锁屏/冷启动验证 | ⛔ 待真机 |
 | 退出登录解绑 alias | 🟡 代码路径存在，需真机确认 |
 

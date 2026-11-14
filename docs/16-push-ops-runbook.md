@@ -10,8 +10,8 @@
 | 1 | 极光应用创建与 AppKey | 你（企业实名） | `JPUSH_APP_KEY`、`JPUSH_MASTER_SECRET` | 极光企业认证 |
 | 2 | 厂商通道申请（小米/华为/荣耀/OPPO/vivo） | 你（企业资质） | 各厂商 AppKey / 推送证书 | 企业主体 + 1–2 周审核 |
 | 3 | APNs 证书/Auth Key（iOS） | 你（Apple 账号） | `.p8` + Key ID + Team ID | Apple Developer 账号 |
-| 4 | 推送网关服务 | 我可以写（Go/Node 二选一）+ 你部署 | `push.example.com` | 一台服务器 + 域名 + HTTPS |
-| 5 | Traccar 打补丁与配置 | 你（服务器权限），我出步骤/校验 | `webhook` 通知器生效 | Traccar 源码或可回滚的环境 |
+| 4 | 推送网关服务 | ✅ 代码已完成，待你部署 | `push.example.com` | 一台服务器 + 域名 + HTTPS |
+| 5 | Traccar 打补丁与配置 | 你（服务器权限），补丁已写好 | `webhook` 通知器生效 | Traccar 源码或可回滚的环境 |
 | 6 | 客户端验证 | 一起做 | 诊断页 alias + 锁屏通知 | 真机 |
 
 > 🔴 **红线**：`JPUSH_MASTER_SECRET` 只进网关环境变量与 CI Secret，
@@ -68,26 +68,73 @@
 - 一个域名，如 `push.example.com`，解析到该服务器；
 - HTTPS 证书（Let's Encrypt 即可），Traccar 只允许 HTTPS 调用。
 
-### 3.2 我可以直接产出（说一声就开工）
+### 3.2 网关代码（已完成，只需部署）
 
-- 网关最小实现（推荐 Go，单二进制 + Redis）：
-  - `POST /v1/events`：验 HMAC（`X-Traccar-Signature`）、`event.id` 幂等、限流、渲染文案；
-  - `POST /v1/aliases` / `DELETE /v1/aliases/{alias}`：别名注册与解绑；
-  - 调极光 `POST https://api.jpush.cn/v3/push`；
-  - `Dockerfile` + `docker-compose.yml`（含 Redis）+ `.env.example`；
-  - 一键自测脚本（模拟 Traccar 事件 → 检查极光返回）。
-- 需要你回填的只有两个环境变量：`JPUSH_APP_KEY`、`JPUSH_MASTER_SECRET`。
+代码在 [`server/push-gateway/`](../server/push-gateway/)（Go，单二进制 + Redis）：
 
-### 3.3 最小能力清单（验收用）
+```
+server/push-gateway/
+├── cmd/gateway/main.go        # 入口：配置、路由、延后队列 worker、优雅关闭
+├── internal/auth/             # HMAC 校验、别名解析、Traccar Token 校验
+├── internal/store/            # Redis / 内存两种存储实现
+├── internal/jpush/            # 极光 REST v3 客户端
+├── internal/template/         # 中英文文案模板
+├── internal/gateway/          # 业务逻辑：幂等、限流合并、免打扰、重试、死信
+├── internal/httpapi/          # HTTP 接口
+├── Dockerfile                 # 多阶段构建 + healthcheck
+├── docker-compose.yml         # 网关 + Redis
+├── .env.example               # 全部环境变量说明
+└── scripts/send_test_event.sh # 模拟 Traccar 事件的联调脚本
+```
 
-| 能力 | 验收方式 |
+已实现的能力：
+
+| 能力 | 说明 |
 |---|---|
-| HMAC 校验 | 故意改 body → 网关返回 401 |
-| 幂等 | 同一 `event.id` 连发两次 → 极光只收到 1 条 |
-| 别名隔离 | alias `u2@1` 不会收到 `u1@1` 的事件 |
-| 限流 | 单用户 60 条/分钟后合并或丢弃 |
-| 文案模板 | `event.type=geofenceEnter` → 中文标题「围栏进入」 |
-| 审计日志 | 每条投递记录 eventId、alias、极光 msg_id、耗时 |
+| HMAC 鉴权 | `X-Traccar-Signature: sha256=<hex>`，常量时间比较，失败 401 |
+| 别名越权防护 | 用 Traccar Token 换 `/api/session`，校验别名里的 `u{userId}` 属于该用户 |
+| 幂等 | `event.id` 幂等键，默认 24 小时 |
+| 限流合并 | 单用户每分钟上限（默认 60），超出部分合并成一条延后推送 |
+| 免打扰 | `QUIET_HOURS=22:00-07:00` 时段内只入库，次日补发 |
+| 文案模板 | 中英文模板，覆盖围栏/告警/点火/超速/震动等常见事件 |
+| 重试与死信 | 指数退避重试 3 次，仍失败写入死信列表（`GET /v1/dead`） |
+| 审计日志 | JSON 结构化日志：eventId、alias、类型、极光 msg_id、耗时 |
+| 健康检查 | `/healthz`、`/readyz` |
+
+测试与联调：
+
+```bash
+cd server/push-gateway
+go test ./...                     # 单元 + HTTP 接口测试
+DRY_RUN=true STORE_BACKEND=memory TRACCAR_WEBHOOK_SECRET=dev-secret \
+  go run ./cmd/gateway &          # 不接真实极光也能跑通全流程
+GATEWAY_URL=http://127.0.0.1:8080 SECRET=dev-secret ./scripts/send_test_event.sh
+```
+
+### 3.3 你需要做的
+
+1. 一台能跑 Docker 的云服务器（1C2G 足够）；
+2. 一个域名，如 `push.example.com`，解析到该服务器；
+3. HTTPS 证书（Let's Encrypt 即可），Traccar 只允许 HTTPS 调用；
+4. 复制 `.env.example` 为 `.env`，填入：
+
+```bash
+TRACCAR_WEBHOOK_SECRET=<与 Traccar notificator.webhook.secret 一致>
+JPUSH_APP_KEY=2e6135fffb1db1d409ab1d62
+JPUSH_MASTER_SECRET=<极光 Master Secret>
+TRACCAR_BASE_URL=https://track.example.com
+ADMIN_TOKEN=<随机串>
+```
+
+5. `docker compose up -d` 部署，验证：
+
+```bash
+curl -s https://push.example.com/healthz
+GATEWAY_URL=https://push.example.com SECRET=$TRACCAR_WEBHOOK_SECRET \
+  ./scripts/send_test_event.sh
+```
+
+> `JPUSH_MASTER_SECRET` 只出现在 `.env` 与 CI Secret，不要贴进仓库或聊天记录。
 
 ---
 
@@ -186,6 +233,7 @@ tail -f /opt/traccar/logs/traccar.log | grep -i webhook
 | 极光 AppKey | ✅ 已内置（`2e61…1d62`） |
 | 极光 Master Secret | ⛔ 待你提供（仅给网关） |
 | 厂商通道 | ⛔ 待申请 |
-| 推送网关 | ⛔ 待实现与部署（我可以写） |
+| 推送网关 | ✅ 代码完成（`server/push-gateway/`，Go + Redis，Docker 可部署），待部署与填密钥 |
 | Traccar webhook 通知器 | ✅ 补丁已写好，待打到你服务器 |
+| 客户端 → 网关别名同步 | ✅ 代码完成（需构建时带 `PUSH_GATEWAY_URL`） |
 | 真机锁屏/冷启动验证 | ⛔ 待真机 |

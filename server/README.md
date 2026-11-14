@@ -177,6 +177,12 @@ Authorization: Basic base64(appKey:masterSecret)
 
 ## 3. 网关最小实现建议
 
+> ✅ **已实现**：`server/push-gateway/`（Go，单二进制 + Redis，Docker 可直接部署）。
+> 见 [`server/push-gateway/README.md`](push-gateway/README.md)：
+> HMAC 校验、幂等、限流合并、免打扰、文案模板、重试与死信、审计日志、
+> 别名越权拦截、健康检查，`go test ./...` 全绿。
+> 本节保留为设计依据。
+
 | 能力 | 说明 |
 |---|---|
 | 鉴权 | Traccar → 网关用 HMAC；App → 网关用 Traccar Token 换取短期 JWT |
