@@ -29,6 +29,9 @@ enum FailureKind {
   /// 返回结构不是 Traccar API。
   invalidServer,
 
+  /// 需要用户先完成某项授权（例如后台定位单独同意）。
+  consentRequired,
+
   /// 其他未知错误。
   unknown,
 }
@@ -39,12 +42,23 @@ class AppFailure implements Exception {
     this.message, {
     this.statusCode,
     this.cause,
+    this.messageKey,
+    this.messageArgs = const {},
   });
 
   final FailureKind kind;
+
+  /// 中文兜底文案。界面优先使用 [messageKey] 对应的本地化文案。
   final String message;
+
   final int? statusCode;
   final Object? cause;
+
+  /// 本地化 key（对应 ARB 中的 `error*` 条目），为空时使用 [message]。
+  final String? messageKey;
+
+  /// 本地化文案里的占位符参数。
+  final Map<String, String> messageArgs;
 
   bool get isUnauthorized => kind == FailureKind.unauthorized;
 

@@ -187,7 +187,7 @@ class CommandQueue {
         .write(
       PendingCommandsCompanion(
         status: Value(CommandStatus.pending.name),
-        lastError: const Value('上次发送未完成，已重新入队'),
+        lastError: const Value('command.requeued'),
         updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
       ),
     );

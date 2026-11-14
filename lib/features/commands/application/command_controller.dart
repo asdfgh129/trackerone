@@ -114,6 +114,7 @@ class CommandController extends AsyncNotifier<CommandState> {
       throw const AppFailure(
         FailureKind.unauthorized,
         '登录已失效，无法发送指令',
+        messageKey: 'errorCommandSessionExpired',
       );
     }
 
@@ -131,7 +132,7 @@ class CommandController extends AsyncNotifier<CommandState> {
     if (offline) {
       await queue.markQueued(
         row.id,
-        reason: '当前离线，指令已加入队列',
+        reason: 'command.queued',
       );
       await _reload();
       return CommandDispatch.queued;

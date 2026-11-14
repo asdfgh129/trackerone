@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/privacy/background_location_consent.dart';
 import '../../../core/storage/app_preferences.dart';
 import '../../../core/tracking/sdk_tracking_engine.dart';
 import '../../../core/tracking/tracking_engine.dart';
@@ -152,7 +153,11 @@ class TrackingController extends AsyncNotifier<TrackingState> {
     final api = ref.read(traccarApiProvider);
     final server = ref.read(activeServerProvider);
     if (api == null || server == null) {
-      throw const AppFailure(FailureKind.unauthorized, '请先登录服务器');
+      throw const AppFailure(
+        FailureKind.unauthorized,
+        '请先登录服务器',
+        messageKey: 'errorLoginRequired',
+      );
     }
     final current = _current;
     _set(current.copyWith(busy: true, clearError: true));
@@ -185,10 +190,27 @@ class TrackingController extends AsyncNotifier<TrackingState> {
   }
 
   /// 开始后台上报。首次会申请前台定位权限。
+  ///
+  /// 合规：开始前必须已获得「后台定位」的单独授权（行踪轨迹属于敏感个人信息），
+  /// 未授权时抛出 [FailureKind.consentRequired]，由界面引导用户单独同意。
   Future<void> start() async {
+    final consent =
+        ref.read(backgroundLocationConsentProvider).valueOrNull ?? false;
+    if (!consent) {
+      throw const AppFailure(
+        FailureKind.consentRequired,
+        '需要先同意后台定位授权',
+        messageKey: 'errorBackgroundConsentRequired',
+      );
+    }
+
     final server = ref.read(activeServerProvider);
     if (server == null) {
-      throw const AppFailure(FailureKind.invalidServer, '请先配置服务器');
+      throw const AppFailure(
+        FailureKind.invalidServer,
+        '请先配置服务器',
+        messageKey: 'errorServerRequired',
+      );
     }
 
     _set(_current.copyWith(busy: true, clearError: true));
@@ -201,6 +223,7 @@ class TrackingController extends AsyncNotifier<TrackingState> {
         throw const AppFailure(
           FailureKind.forbidden,
           '需要定位权限才能开始上报，请在系统设置中开启',
+          messageKey: 'errorLocationPermission',
         );
       }
 
@@ -211,6 +234,7 @@ class TrackingController extends AsyncNotifier<TrackingState> {
         throw const AppFailure(
           FailureKind.forbidden,
           '请先完成权限向导：后台定位与通知权限缺失',
+          messageKey: 'errorPermissionsMissing',
         );
       }
 

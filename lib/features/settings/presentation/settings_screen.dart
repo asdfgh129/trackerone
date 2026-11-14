@@ -9,6 +9,7 @@ import '../../../core/config/brand.dart';
 import '../../../core/links/external_link.dart';
 import '../../../core/localization/app_languages.dart';
 import '../../../core/map/map_privacy_consent.dart';
+import '../../../core/privacy/background_location_consent.dart';
 import '../../../core/privacy/privacy_consent.dart';
 import '../../../core/storage/app_preferences.dart';
 import '../../../core/storage/local_data_cleaner.dart';
@@ -18,6 +19,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../auth/application/session_controller.dart';
 import '../../server/application/server_profiles_controller.dart';
 import '../../tracking/application/tracking_controller.dart';
+import '../../tracking/presentation/background_location_consent_sheet.dart';
 import '../application/locale_controller.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -142,6 +144,25 @@ class SettingsScreen extends ConsumerWidget {
                         );
                       } else {
                         unawaited(_revokePrivacy(context, ref));
+                      }
+                    },
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.location_searching_outlined),
+                  title: Text(l10n.settingsBackgroundLocationConsent),
+                  subtitle: Text(l10n.settingsBackgroundLocationConsentBody),
+                  trailing: Switch(
+                    value: ref
+                            .watch(backgroundLocationConsentProvider)
+                            .valueOrNull ??
+                        false,
+                    onChanged: (value) {
+                      if (value) {
+                        unawaited(_grantBackgroundLocation(context, ref));
+                      } else {
+                        unawaited(_revokeBackgroundLocation(context, ref));
                       }
                     },
                   ),
@@ -408,6 +429,49 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  /// 同意后台定位（行踪轨迹属于敏感个人信息，需单独授权）。
+  Future<void> _grantBackgroundLocation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final agreed = await showBackgroundLocationConsentSheet(context, ref);
+    if (!agreed || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).backgroundConsentGranted)),
+    );
+  }
+
+  /// 撤回后台定位授权：停止后台上报并清除授权状态。
+  Future<void> _revokeBackgroundLocation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.settingsBackgroundLocationRevokeTitle),
+        content: Text(l10n.settingsBackgroundLocationRevokeBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.settingsBackgroundLocationRevokeAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _stopTrackingIfNeeded(ref);
+    await ref.read(backgroundLocationConsentProvider.notifier).revoke();
+  }
+
   /// 撤回隐私授权：停止跟踪、解绑推送、清地图授权，并回到授权页。
   Future<void> _revokePrivacy(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
@@ -433,6 +497,7 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
     await _stopTrackingIfNeeded(ref);
+    await ref.read(backgroundLocationConsentProvider.notifier).revoke();
     await ref.read(privacyConsentProvider.notifier).revoke();
   }
 }

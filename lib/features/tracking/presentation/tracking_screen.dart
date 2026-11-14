@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/localization/failure_localizer.dart';
 import '../../../domain/failures.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/presentation/formatters.dart';
 import '../../auth/application/session_controller.dart';
 import '../../server/application/server_profiles_controller.dart';
 import '../application/tracking_controller.dart';
+import 'background_location_consent_sheet.dart';
 
 class TrackingScreen extends ConsumerWidget {
   const TrackingScreen({super.key});
@@ -203,6 +205,7 @@ class TrackingScreen extends ConsumerWidget {
   }
 
   Future<void> _start(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     if (!await _hasPermissions()) {
       if (!context.mounted) return;
       final openWizard = await showDialog<bool>(
@@ -231,7 +234,21 @@ class TrackingScreen extends ConsumerWidget {
     try {
       await ref.read(trackingProvider.notifier).start();
     } on AppFailure catch (failure) {
-      if (context.mounted) _message(context, failure.message);
+      // 后台定位需要单独同意（行踪轨迹属于敏感个人信息）。
+      if (failure.kind == FailureKind.consentRequired) {
+        if (!context.mounted) return;
+        final agreed = await showBackgroundLocationConsentSheet(context, ref);
+        if (!agreed || !context.mounted) return;
+        try {
+          await ref.read(trackingProvider.notifier).start();
+        } on AppFailure catch (retryFailure) {
+          if (context.mounted) {
+            _message(context, failureMessage(l10n, retryFailure));
+          }
+        }
+        return;
+      }
+      if (context.mounted) _message(context, failureMessage(l10n, failure));
     } catch (error) {
       if (context.mounted) _message(context, error.toString());
     }
@@ -262,7 +279,7 @@ class TrackingScreen extends ConsumerWidget {
       await ref.read(trackingProvider.notifier).bindDevice();
       if (context.mounted) _message(context, l10n.trackingBindSuccess);
     } on AppFailure catch (failure) {
-      if (context.mounted) _message(context, failure.message);
+      if (context.mounted) _message(context, failureMessage(l10n, failure));
     }
   }
 

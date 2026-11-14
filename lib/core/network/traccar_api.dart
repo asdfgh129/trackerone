@@ -140,6 +140,7 @@ class TraccarApi {
             FailureKind.unauthorized,
             '邮箱或密码错误',
             statusCode: 401,
+            messageKey: 'errorInvalidCredentials',
           );
         }
         if (response.statusCode != null && response.statusCode! >= 400) {
@@ -147,6 +148,7 @@ class TraccarApi {
             FailureKind.unauthorized,
             _messageFromBody(response.data) ?? '登录失败',
             statusCode: response.statusCode,
+            messageKey: 'errorLoginFailed',
           );
         }
       });
@@ -164,11 +166,16 @@ class TraccarApi {
           FailureKind.unauthorized,
           '登录已失效，请重试',
           statusCode: 401,
+          messageKey: 'errorSessionExpired',
         );
       }
       final token = _extractToken(tokenResponse.data);
       if (token == null) {
-        throw const AppFailure(FailureKind.server, '服务器未返回有效 Token');
+        throw const AppFailure(
+          FailureKind.server,
+          '服务器未返回有效 Token',
+          messageKey: 'errorNoToken',
+        );
       }
 
       final account = await _fetchAccountWithToken(token);
@@ -180,7 +187,11 @@ class TraccarApi {
   Future<AuthResult> loginWithToken(String token) => _guard(() async {
         final trimmed = token.trim();
         if (trimmed.isEmpty) {
-          throw const AppFailure(FailureKind.unauthorized, 'Token 不能为空');
+          throw const AppFailure(
+            FailureKind.unauthorized,
+            'Token 不能为空',
+            messageKey: 'errorTokenMissing',
+          );
         }
         final account = await _fetchAccountWithToken(trimmed);
         return AuthResult(account: account, token: trimmed);
@@ -197,7 +208,11 @@ class TraccarApi {
     );
     final data = response.data;
     if (data is! Map) {
-      throw const AppFailure(FailureKind.invalidServer, '服务器返回的不是 Traccar 会话信息');
+      throw const AppFailure(
+        FailureKind.invalidServer,
+        '服务器返回的不是 Traccar 会话信息',
+        messageKey: 'errorInvalidSession',
+      );
     }
     return Account.fromJson(data.cast<String, dynamic>());
   }
@@ -208,7 +223,11 @@ class TraccarApi {
             await _createDio().get<Object?>('/api/session');
         final data = response.data;
         if (data is! Map) {
-          throw const AppFailure(FailureKind.invalidServer, '会话信息格式不正确');
+          throw const AppFailure(
+          FailureKind.invalidServer,
+          '会话信息格式不正确',
+          messageKey: 'errorMalformedSession',
+        );
         }
         return Account.fromJson(data.cast<String, dynamic>());
       });
@@ -297,7 +316,11 @@ class TraccarApi {
             await _createDio().get<Object?>('/api/events/$id');
         final data = response.data;
         if (data is! Map) {
-          throw const AppFailure(FailureKind.invalidServer, '事件数据格式不正确');
+          throw const AppFailure(
+            FailureKind.invalidServer,
+            '事件数据格式不正确',
+            messageKey: 'errorMalformedEvent',
+          );
         }
         return DeviceEvent.fromJson(data.cast<String, dynamic>());
       });
@@ -326,7 +349,11 @@ class TraccarApi {
         );
         final data = response.data;
         if (data is! Map) {
-          throw const AppFailure(FailureKind.server, '创建设备失败：服务器未返回设备信息');
+          throw const AppFailure(
+            FailureKind.server,
+            '创建设备失败：服务器未返回设备信息',
+            messageKey: 'errorDeviceCreateFailed',
+          );
         }
         return Device.fromJson(data.cast<String, dynamic>());
       });
@@ -376,15 +403,28 @@ class TraccarApi {
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.sendTimeout) {
-      return AppFailure(FailureKind.timeout, '连接服务器超时，请检查地址与网络',
-          cause: error);
+      return AppFailure(
+        FailureKind.timeout,
+        '连接服务器超时，请检查地址与网络',
+        cause: error,
+        messageKey: 'errorTimeout',
+      );
     }
     if (error.type == DioExceptionType.badCertificate) {
-      return AppFailure(FailureKind.tls, '服务器证书不受信任', cause: error);
+      return AppFailure(
+        FailureKind.tls,
+        '服务器证书不受信任',
+        cause: error,
+        messageKey: 'errorTls',
+      );
     }
     if (error.type == DioExceptionType.connectionError) {
-      return AppFailure(FailureKind.network, '无法连接服务器，请检查地址与网络',
-          cause: error);
+      return AppFailure(
+        FailureKind.network,
+        '无法连接服务器，请检查地址与网络',
+        cause: error,
+        messageKey: 'errorNetwork',
+      );
     }
 
     switch (status) {
@@ -394,6 +434,7 @@ class TraccarApi {
           serverMessage ?? '登录已失效，请重新登录',
           statusCode: status,
           cause: error,
+          messageKey: 'errorSessionExpired',
         );
       case 403:
         return AppFailure(
@@ -401,6 +442,7 @@ class TraccarApi {
           serverMessage ?? '没有权限执行该操作',
           statusCode: status,
           cause: error,
+          messageKey: 'errorForbidden',
         );
       case 404:
         return AppFailure(
@@ -408,6 +450,7 @@ class TraccarApi {
           serverMessage ?? '接口或资源不存在，请确认服务器版本',
           statusCode: status,
           cause: error,
+          messageKey: 'errorNotFound',
         );
       case 400:
         return AppFailure(
@@ -415,6 +458,7 @@ class TraccarApi {
           serverMessage ?? '请求参数不正确',
           statusCode: status,
           cause: error,
+          messageKey: 'errorInvalidRequest',
         );
     }
 
@@ -424,6 +468,8 @@ class TraccarApi {
         serverMessage ?? '服务器错误（$status）',
         statusCode: status,
         cause: error,
+        messageKey: 'errorServer',
+        messageArgs: {'status': '$status'},
       );
     }
     if (error.type == DioExceptionType.badResponse) {
@@ -432,6 +478,7 @@ class TraccarApi {
         serverMessage ?? '服务器返回了无法识别的响应',
         statusCode: status,
         cause: error,
+        messageKey: 'errorUnrecognizedResponse',
       );
     }
     return AppFailure(
@@ -439,6 +486,8 @@ class TraccarApi {
       serverMessage ?? '请求失败：${error.message ?? '未知错误'}',
       statusCode: status,
       cause: error,
+      messageKey: 'errorRequestFailed',
+      messageArgs: {'reason': error.message ?? '未知错误'},
     );
   }
 
@@ -449,11 +498,16 @@ class TraccarApi {
         throw const AppFailure(
           FailureKind.invalidServer,
           '未检测到 Traccar API（缺少 version 字段）',
+          messageKey: 'errorNotTraccar',
         );
       }
       return ServerInfo.fromJson(map);
     }
-    throw const AppFailure(FailureKind.invalidServer, '未检测到 Traccar API');
+    throw const AppFailure(
+      FailureKind.invalidServer,
+      '未检测到 Traccar API',
+      messageKey: 'errorNotTraccar',
+    );
   }
 
   static List<Map<String, dynamic>> _asList(Object? data) {
@@ -466,7 +520,11 @@ class TraccarApi {
     if (data is Map && data['data'] is List) {
       return _asList(data['data']);
     }
-    throw const AppFailure(FailureKind.invalidServer, '服务器返回格式不正确');
+    throw const AppFailure(
+      FailureKind.invalidServer,
+      '服务器返回格式不正确',
+      messageKey: 'errorMalformedResponse',
+    );
   }
 
   static String? _extractToken(Object? data) {

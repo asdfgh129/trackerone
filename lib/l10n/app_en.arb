@@ -466,5 +466,85 @@
   "settingsPrivacyRevokeBody": "Maps will be unavailable and push will be unbound. Withdraw anyway?",
   "@settingsPrivacyRevokeBody": {},
   "settingsPrivacyRevokeAction": "Withdraw",
-  "@settingsPrivacyRevokeAction": {}
+  "@settingsPrivacyRevokeAction": {},
+  "errorInvalidCredentials": "Email or password is incorrect.",
+  "errorLoginFailed": "Sign-in failed.",
+  "errorSessionExpired": "Your session has expired. Please sign in again.",
+  "errorNoToken": "The server did not return a valid token.",
+  "errorTokenMissing": "A token is required.",
+  "errorInvalidSession": "The server did not return Traccar session data.",
+  "errorMalformedSession": "The session data is malformed.",
+  "errorMalformedEvent": "The event data is malformed.",
+  "errorDeviceCreateFailed": "Could not create the device: the server returned no device data.",
+  "errorTimeout": "The connection timed out. Check the address and network.",
+  "errorTls": "The server certificate is not trusted.",
+  "errorNetwork": "Cannot reach the server. Check the address and network.",
+  "errorForbidden": "You do not have permission to perform this action.",
+  "errorNotFound": "The endpoint or resource does not exist. Check the server version.",
+  "errorInvalidRequest": "The request parameters are invalid.",
+  "errorServer": "Server error ({status}). Please try again later.",
+  "errorUnrecognizedResponse": "The server returned an unrecognized response.",
+  "errorRequestFailed": "Request failed: {reason}",
+  "errorNotTraccar": "This does not look like a Traccar server.",
+  "errorMalformedResponse": "The server response is malformed.",
+  "errorServerRequired": "Configure a server first.",
+  "errorLoginRequired": "Sign in to the server first.",
+  "errorServerAddressRequired": "Enter the server address.",
+  "errorServerAddressFormat": "Invalid server address, for example https://track.example.com",
+  "errorReportUrlFormat": "Invalid report address.",
+  "errorDeleteAccountSessionExpired": "Your session has expired, so the account cannot be deleted.",
+  "errorLocationPermission": "Location permission is required to start reporting. Enable it in system settings.",
+  "errorPermissionsMissing": "Finish the permission wizard first: background location and notifications are missing.",
+  "errorBackgroundConsentRequired": "Agree to background location before you start it.",
+  "errorCommandSessionExpired": "Your session has expired, so the command cannot be sent.",
+  "errorCommandQueued": "You are offline. The command has been queued.",
+  "errorCommandRequeued": "The previous send did not finish and has been queued again.",
+  "backgroundConsentTitle": "Background location",
+  "backgroundConsentBody": "TrackerOne collects location in the background so it can report your route, keep history and raise geofence alerts.",
+  "backgroundConsentDetail": "Location is uploaded to your Traccar server only. You can turn this off at any time in Settings, which also stops background reporting.",
+  "backgroundConsentAgree": "Agree and enable",
+  "backgroundConsentLater": "Not now",
+  "backgroundConsentGranted": "Background location enabled.",
+  "settingsBackgroundLocationConsent": "Background location consent",
+  "settingsBackgroundLocationConsentBody": "Background location collects your route continuously. Turning it off stops background reporting.",
+  "settingsBackgroundLocationRevokeTitle": "Withdraw background location consent",
+  "settingsBackgroundLocationRevokeBody": "Background reporting will stop and the system permission request will be repeated the next time you start it.",
+  "settingsBackgroundLocationRevokeAction": "Withdraw",
+  "qrEmpty": "The QR code is empty.",
+  "qrMalformed": "The QR code does not contain valid JSON.",
+  "qrMissingUrl": "The QR code does not contain a server address.",
+  "qrScannerTitle": "Scan server QR code",
+  "qrCameraUnavailable": "Camera unavailable: {reason}",
+  "qrHint": "Place the server QR code inside the frame.",
+  "settingsComplianceBody": "Filing number / map review number / third-party SDK list",
+  "trackingDeviceLabel": "This device: {id}",
+  "trackingNotificationText": "TrackerOne is reporting your location",
+  "@errorServer": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "@errorRequestFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "@qrCameraUnavailable": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "@trackingDeviceLabel": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  }
 }

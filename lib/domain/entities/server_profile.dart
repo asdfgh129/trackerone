@@ -1,3 +1,5 @@
+import '../failures.dart';
+
 /// 服务器档案：一个地址同时描述 REST/WebSocket 与位置上报入口。
 ///
 /// Traccar 默认端口：
@@ -47,7 +49,11 @@ class ServerProfile {
   }) {
     final trimmed = input.trim();
     if (trimmed.isEmpty) {
-      throw const FormatException('请输入服务器地址');
+      throw const AppFailure(
+        FailureKind.invalidRequest,
+        '请输入服务器地址',
+        messageKey: 'errorServerAddressRequired',
+      );
     }
 
     final withScheme =
@@ -58,7 +64,11 @@ class ServerProfile {
         uri.host.isEmpty ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
         trimmed.contains(RegExp(r'\s'))) {
-      throw const FormatException('服务器地址格式不正确，例如 https://track.example.com');
+      throw const AppFailure(
+        FailureKind.invalidRequest,
+        '服务器地址格式不正确，例如 https://track.example.com',
+        messageKey: 'errorServerAddressFormat',
+      );
     }
 
     final api = _stripQueryAndFragment(
@@ -74,7 +84,11 @@ class ServerProfile {
             : '${uri.scheme}://${reportUrl.trim()}',
       );
       if (reportUri == null || reportUri.host.isEmpty) {
-        throw const FormatException('上报地址格式不正确');
+        throw const AppFailure(
+          FailureKind.invalidRequest,
+          '上报地址格式不正确',
+          messageKey: 'errorReportUrlFormat',
+        );
       }
       report = _stripQueryAndFragment(
         reportUri.replace(fragment: '', query: '').toString(),

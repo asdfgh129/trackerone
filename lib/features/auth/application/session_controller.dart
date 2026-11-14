@@ -96,7 +96,11 @@ class SessionController extends AsyncNotifier<SessionState> {
   ServerProfile _requireServer() {
     final server = state.valueOrNull?.server ?? ref.read(activeServerProvider);
     if (server == null) {
-      throw const AppFailure(FailureKind.invalidServer, '请先配置服务器');
+      throw const AppFailure(
+        FailureKind.invalidServer,
+        '请先配置服务器',
+        messageKey: 'errorServerRequired',
+      );
     }
     return server;
   }
@@ -158,7 +162,11 @@ class SessionController extends AsyncNotifier<SessionState> {
         token == null ||
         token.isEmpty ||
         account == null) {
-      throw const AppFailure(FailureKind.unauthorized, '登录已失效，无法注销账号');
+      throw const AppFailure(
+        FailureKind.unauthorized,
+        '登录已失效，无法注销账号',
+        messageKey: 'errorDeleteAccountSessionExpired',
+      );
     }
 
     await TraccarApi(server: server, token: token).deleteUser(account.id);
