@@ -27,8 +27,13 @@ flutter build appbundle --release \
   --dart-define=FLAVOR=prod \
   --dart-define=MAP_PROVIDER=amap \
   --dart-define=AMAP_ANDROID_KEY=$AMAP_ANDROID_KEY \
-  --dart-define=PUSH_PROVIDER=jpush
+  --dart-define=PUSH_PROVIDER=jpush \
+  --dart-define=PUSH_GATEWAY_URL=https://push.example.com
 ```
+
+> ⚠️ `PUSH_GATEWAY_URL` 是推送链路的必经参数：网关靠它接收别名注册，
+> **不填则网关会丢弃全部事件**（`no_alias`），App 只能靠 WebSocket 收事件。
+> 部署步骤见 [docs/16](16-push-ops-runbook.md)。
 
 5. 校验签名：
 
@@ -52,7 +57,8 @@ flutter build ipa --release \
   --dart-define=FLAVOR=prod \
   --dart-define=MAP_PROVIDER=amap \
   --dart-define=AMAP_IOS_KEY=$AMAP_IOS_KEY \
-  --dart-define=PUSH_PROVIDER=jpush
+  --dart-define=PUSH_PROVIDER=jpush \
+  --dart-define=PUSH_GATEWAY_URL=https://push.example.com
 ```
 
 4. 导出/上传：
@@ -137,6 +143,7 @@ flutter build ios --simulator --no-codesign
 
 - [ ] 关闭调试入口与 `SIMULATE_DEVICES`；
 - [x] 确认 `PUSH_PROVIDER` / `MAP_PROVIDER` 为生产值（默认 `jpush` / `amap`）；
+- [ ] 正式包必须带 `--dart-define=PUSH_GATEWAY_URL=<网关域名>`，否则网关丢弃全部事件
 - [ ] 确认无测试服务器地址、测试账号、测试 Key（`Brand.demoServerUrl` 仍为 demo）；
 - [ ] 确认日志不输出 Token、密码、完整位置；
 - [x] 确认 `tool/release_check.sh` 通过；
