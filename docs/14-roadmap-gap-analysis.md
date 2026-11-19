@@ -202,7 +202,7 @@
 | 单元/组件测试 | `flutter test` | ✅ 91 通过（新增二维码解析 6 个、后台定位授权 3 个，隐私撤回用例覆盖后台定位） |
 | ARB | `tool/release_check.sh --fast` | ✅ 35 个文件结构一致；⚠️ 31 种语言 52 个新增 key 未翻译（回落英文） |
 | 错误文案 | 代码走查 | ✅ 网络/领域层改用 `messageKey`，界面统一 `failureMessage()` |
-| Android 构建 | `flutter build apk --release --split-per-abi` | ✅ 通用包 + 3 个 ABI 包，签名 `CN=TrackerOne`（SHA256 `cc80b19c…`），versionCode 2004/1004/3004 |
+| Android 构建 | `flutter build apk --release --split-per-abi` | ✅ 通用包 + 3 个 ABI 包，签名 `CN=TrackerOne`（SHA256 `cc80b19c…`），versionCode 4（通用）/ 1004 / 2004 / 4004 |
 | Android AAB | `flutter build appbundle --release` | ✅ `TrackerOne-0.4.0-release.aab`，无 `AD_ID` |
 | iOS 构建 | `flutter build ios --release --no-codesign` | ✅ `Runner.app` 含 `PrivacyInfo.xcprivacy`，Bundle ID `com.trackerone.app` |
 | 产物校验 | `shasum -a 256 dist/*` | ✅ 6 个产物已生成（未带 `PUSH_GATEWAY_URL`，仅本地验证） |
