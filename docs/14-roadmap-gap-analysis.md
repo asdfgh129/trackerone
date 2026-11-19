@@ -128,7 +128,7 @@
 | `RealtimeController.refresh()` 丢失 `connected` | 以 WebSocket 实际状态回填 | ✅ |
 | 通用 REST 401 无全局登出 | `TraccarApi` 增加 `onUnauthorized` 拦截器并接入会话 | ✅ |
 | `home_screen.dart` 死代码 | 已删除 | ✅ |
-| 事件固定 24h、历史无分页/上限 | 未处理 | ⛔ |
+| 事件固定 24h、历史无分页/上限 | 事件支持 24h/7d/30d 与 300 条上限；历史按天分段请求并在 2 万点后抽稀（`HistoryTrace.sampled`） | ✅ |
 | 约 58 处中文硬编码 | 数据层改为 `messageKey`，界面统一本地化 | ✅ |
 | 后台定位缺少单独授权 | `BackgroundLocationConsentNotifier` + 单独同意弹窗，撤回总授权时一并清除 | ✅ |
 | 新增 52 个 ARB key 未翻译 31 种语言 | 回落英文，待人工翻译 | 🟡 |

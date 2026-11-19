@@ -69,26 +69,28 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Expanded(
             child: history.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline, size: 48),
-                      const SizedBox(height: 12),
-                      Text(error.toString(), textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: () =>
-                            ref.invalidate(historyProvider(query)),
-                        child: Text(l10n.retry),
+              error:
+                  (error, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, size: 48),
+                          const SizedBox(height: 12),
+                          Text(error.toString(), textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed:
+                                () => ref.invalidate(historyProvider(query)),
+                            child: Text(l10n.retry),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              data: (positions) {
+              data: (trace) {
+                final positions = trace.positions;
                 if (positions.isEmpty) {
                   return Center(
                     child: Text(
@@ -99,6 +101,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 }
                 return _HistoryBody(
                   positions: positions,
+                  sampled: trace.sampled,
                   deviceId: widget.deviceId,
                   label: device?.name ?? l10n.deviceTitle,
                 );
@@ -116,11 +119,15 @@ class _HistoryBody extends StatelessWidget {
     required this.positions,
     required this.deviceId,
     required this.label,
+    this.sampled = false,
   });
 
   final List<Position> positions;
   final int deviceId;
   final String label;
+
+  /// 服务端点数超过上限时已抽稀，界面需要说明。
+  final bool sampled;
 
   @override
   Widget build(BuildContext context) {
@@ -147,9 +154,7 @@ class _HistoryBody extends StatelessWidget {
                   point: points.last,
                 ),
               ],
-              trails: [
-                MapTrail(deviceId: deviceId, points: points),
-              ],
+              trails: [MapTrail(deviceId: deviceId, points: points)],
               initialTarget: points.last,
               initialZoom: 14,
             ),
@@ -171,6 +176,15 @@ class _HistoryBody extends StatelessWidget {
                   '${formatDateTime(positions.first.fixTime)} → ${formatDateTime(positions.last.fixTime)}',
                   style: theme.textTheme.bodySmall,
                 ),
+                if (sampled) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.historySampled,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.tertiary,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

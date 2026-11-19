@@ -13,12 +13,9 @@ import '../../l10n/app_localizations.dart';
 /// 与 `MaterialApp` 使用同一套 [AppLocalizations.supportedLocales]。
 final appLocalizationsProvider = Provider<AppLocalizations>((ref) {
   final override = ref.watch(localeProvider);
-  final resolved = basicLocaleListResolution(
-    <Locale>[
-      if (override != null) override,
-      PlatformDispatcher.instance.locale,
-    ],
-    AppLocalizations.supportedLocales,
-  );
+  final resolved = basicLocaleListResolution(<Locale>[
+    if (override != null) override,
+    PlatformDispatcher.instance.locale,
+  ], AppLocalizations.supportedLocales);
   return lookupAppLocalizations(resolved);
 });

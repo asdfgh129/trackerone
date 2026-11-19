@@ -389,5 +389,10 @@
   "qrHint": "將伺服器 QR 碼放入取景框",
   "settingsComplianceBody": "APP 備案號 / 地圖審圖號 / 第三方 SDK 清單",
   "trackingDeviceLabel": "本機 {id}",
-  "trackingNotificationText": "TrackerOne 正在上報位置"
+  "trackingNotificationText": "TrackerOne 正在上報位置",
+  "eventsRange24h": "最近 24 小時",
+  "eventsRange7d": "最近 7 天",
+  "eventsRange30d": "最近 30 天",
+  "eventsLimited": "僅顯示最近 {count} 筆",
+  "historySampled": "時間範圍較大，軌跡已抽稀顯示，點數為抽稀後的數量。"
 }

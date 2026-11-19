@@ -413,5 +413,10 @@
   "qrHint": "将服务器二维码放入取景框",
   "settingsComplianceBody": "APP 备案号 / 地图审图号 / 第三方 SDK 清单",
   "trackingDeviceLabel": "本机 {id}",
-  "trackingNotificationText": "TrackerOne 正在上报位置"
+  "trackingNotificationText": "TrackerOne 正在上报位置",
+  "eventsRange24h": "最近 24 小时",
+  "eventsRange7d": "最近 7 天",
+  "eventsRange30d": "最近 30 天",
+  "eventsLimited": "仅显示最近 {count} 条",
+  "historySampled": "时间范围较大，轨迹已抽稀显示，点数为抽稀后的数量。"
 }

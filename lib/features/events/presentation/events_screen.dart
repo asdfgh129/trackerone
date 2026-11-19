@@ -8,14 +8,22 @@ import '../../../shared/presentation/formatters.dart';
 import '../../realtime/application/realtime_controller.dart';
 import '../application/events_provider.dart';
 
-class EventsScreen extends ConsumerWidget {
+class EventsScreen extends ConsumerStatefulWidget {
   const EventsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EventsScreen> createState() => _EventsScreenState();
+}
+
+class _EventsScreenState extends ConsumerState<EventsScreen> {
+  EventRange _range = EventRange.last24Hours;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final realtime = ref.watch(realtimeProvider).valueOrNull;
-    final history = ref.watch(eventHistoryProvider);
+    final query = EventHistoryQuery(range: _range);
+    final history = ref.watch(eventHistoryProvider(query));
 
     final merged = <int, DeviceEvent>{};
     for (final event in history.valueOrNull ?? const <DeviceEvent>[]) {
@@ -24,12 +32,12 @@ class EventsScreen extends ConsumerWidget {
     for (final event in realtime?.events ?? const <DeviceEvent>[]) {
       merged[event.id] = event;
     }
-    final events = merged.values.toList()
-      ..sort((a, b) {
-        final left = a.eventTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final right = b.eventTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return right.compareTo(left);
-      });
+    final events =
+        merged.values.toList()..sort((a, b) {
+          final left = a.eventTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final right = b.eventTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return right.compareTo(left);
+        });
 
     return Scaffold(
       appBar: AppBar(
@@ -47,67 +55,118 @@ class EventsScreen extends ConsumerWidget {
           IconButton(
             tooltip: l10n.commonRefresh,
             onPressed: () {
-              ref.invalidate(eventHistoryProvider);
+              ref.invalidate(eventHistoryProvider(query));
               ref.read(realtimeProvider.notifier).refresh();
             },
             icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(eventHistoryProvider);
-          await ref.read(realtimeProvider.notifier).refresh();
-        },
-        child: events.isEmpty
-            ? ListView(
-                children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    child: _EmptyEvents(
-                      loading: history.isLoading,
-                      error: history.error?.toString(),
-                      onRetry: () => ref.invalidate(eventHistoryProvider),
-                    ),
-                  ),
-                ],
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                itemCount: events.length + 1,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        l10n.eventsHistory,
-                        style: Theme.of(context).textTheme.labelMedium,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: SegmentedButton<EventRange>(
+              segments: [
+                ButtonSegment(
+                  value: EventRange.last24Hours,
+                  label: Text(l10n.eventsRange24h),
+                ),
+                ButtonSegment(
+                  value: EventRange.last7Days,
+                  label: Text(l10n.eventsRange7d),
+                ),
+                ButtonSegment(
+                  value: EventRange.last30Days,
+                  label: Text(l10n.eventsRange30d),
+                ),
+              ],
+              selected: {_range},
+              onSelectionChanged: (selection) {
+                setState(() => _range = selection.first);
+              },
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(eventHistoryProvider(query));
+                await ref.read(realtimeProvider.notifier).refresh();
+              },
+              child:
+                  events.isEmpty
+                      ? ListView(
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.6,
+                            child: _EmptyEvents(
+                              loading: history.isLoading,
+                              error: history.error?.toString(),
+                              onRetry:
+                                  () => ref.invalidate(
+                                    eventHistoryProvider(query),
+                                  ),
+                            ),
+                          ),
+                        ],
+                      )
+                      : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                        itemCount: events.length + 1,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            final truncated =
+                                (history.valueOrNull?.length ?? 0) >=
+                                query.limit;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    l10n.eventsHistory,
+                                    style:
+                                        Theme.of(context).textTheme.labelMedium,
+                                  ),
+                                  const Spacer(),
+                                  if (truncated)
+                                    Text(
+                                      l10n.eventsLimited(query.limit),
+                                      style:
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall,
+                                    ),
+                                ],
+                              ),
+                            );
+                          }
+                          final event = events[index - 1];
+                          final device = realtime?.devices[event.deviceId];
+                          return Card(
+                            child: ListTile(
+                              onTap: () => context.push('/event/${event.id}'),
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                                child: Icon(eventIcon(event.type), size: 20),
+                              ),
+                              title: Text(humanizeEventType(event.type)),
+                              subtitle: Text(
+                                '${device?.name ?? '#${event.deviceId}'} · ${formatDateTime(event.eventTime)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  }
-                  final event = events[index - 1];
-                  final device = realtime?.devices[event.deviceId];
-                  return Card(
-                    child: ListTile(
-                      onTap: () => context.push('/event/${event.id}'),
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        child: Icon(eventIcon(event.type), size: 20),
-                      ),
-                      title: Text(humanizeEventType(event.type)),
-                      subtitle: Text(
-                        '${device?.name ?? '#${event.deviceId}'} · ${formatDateTime(event.eventTime)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                    ),
-                  );
-                },
-              ),
+            ),
+          ),
+        ],
       ),
     );
   }

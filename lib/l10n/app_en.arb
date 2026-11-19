@@ -546,5 +546,17 @@
         "type": "String"
       }
     }
+  },
+  "eventsRange24h": "Last 24 hours",
+  "eventsRange7d": "Last 7 days",
+  "eventsRange30d": "Last 30 days",
+  "eventsLimited": "Showing the latest {count}",
+  "historySampled": "The range is large, so the trail is sampled; the count refers to the sampled points.",
+  "@eventsLimited": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }
