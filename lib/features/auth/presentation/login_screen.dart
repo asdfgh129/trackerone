@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/failure_localizer.dart';
 import '../../../domain/failures.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../server/application/server_profiles_controller.dart';
@@ -59,7 +60,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context.go(widget.from ?? '/home/map');
     } on AppFailure catch (failure) {
       if (!mounted) return;
-      setState(() => _error = failure.message);
+      setState(
+        () => _error = failureMessage(AppLocalizations.of(context), failure),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());

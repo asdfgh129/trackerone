@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../map/map_privacy_consent.dart';
 import '../push/push_service.dart';
+import 'background_location_consent.dart';
 
 /// 全局隐私政策授权状态。
 ///
@@ -80,6 +81,11 @@ class PrivacyConsentNotifier extends AsyncNotifier<bool> {
             false,
           );
       ref.invalidate(mapPrivacyConsentProvider);
+      // 后台定位属于敏感个人信息，有独立的单独授权，也必须一并撤回。
+      await ref
+          .read(backgroundLocationConsentStoreProvider)
+          .write(false);
+      ref.invalidate(backgroundLocationConsentProvider);
       // 解绑推送别名，避免撤回后仍收到推送。
       await ref.read(pushServiceProvider).deleteAlias();
     } finally {

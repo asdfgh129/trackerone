@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/failure_localizer.dart';
 import '../../../core/storage/command_queue.dart';
 import '../../../domain/entities/device_command.dart';
 import '../../../domain/entities/models.dart';
@@ -115,7 +116,11 @@ Future<void> showDeviceCommandSheet(
     );
   } on AppFailure catch (failure) {
     messenger.showSnackBar(
-      SnackBar(content: Text('${l10n.deviceCommandFailed}: ${failure.message}')),
+      SnackBar(
+        content: Text(
+          '${l10n.deviceCommandFailed}: ${failureMessage(l10n, failure)}',
+        ),
+      ),
     );
   } catch (error) {
     messenger.showSnackBar(
@@ -341,7 +346,9 @@ class _CommandTile extends StatelessWidget {
           if (item.attempts > 0)
             l10n.commandAttempts(item.attempts),
           if (item.lastError != null)
-            l10n.commandLastError(item.lastError!),
+            l10n.commandLastError(
+              commandStatusMessage(l10n, item.lastError!),
+            ),
         ].join(' · '),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,

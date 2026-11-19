@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackerone/core/map/map_privacy_consent.dart';
+import 'package:trackerone/core/privacy/background_location_consent.dart';
 import 'package:trackerone/core/privacy/privacy_consent.dart';
 import 'package:trackerone/core/push/push_gateway.dart';
 import 'package:trackerone/core/push/push_service.dart';
@@ -36,6 +37,19 @@ class _FakeMapConsentStore implements MapPrivacyConsentStore {
   }
 }
 
+class _FakeBackgroundLocationConsentStore
+    implements BackgroundLocationConsentStore {
+  bool agreed = false;
+
+  @override
+  Future<bool> read() async => agreed;
+
+  @override
+  Future<void> write(bool value) async {
+    agreed = value;
+  }
+}
+
 class _FakePushGateway implements PushGateway {
   int deleteAliasCalls = 0;
 
@@ -67,6 +81,7 @@ void main() {
   late _FakePrivacyConsentStore consentStore;
   late _FakeMapConsentStore mapStore;
   late _FakePushGateway pushGateway;
+  late _FakeBackgroundLocationConsentStore backgroundStore;
 
   ProviderContainer createContainer() {
     return ProviderContainer(
@@ -74,6 +89,8 @@ void main() {
         privacyConsentStoreProvider.overrideWithValue(consentStore),
         mapPrivacyConsentStoreProvider.overrideWithValue(mapStore),
         pushGatewayProvider.overrideWithValue(pushGateway),
+        backgroundLocationConsentStoreProvider
+            .overrideWithValue(backgroundStore),
       ],
     );
   }
@@ -83,6 +100,7 @@ void main() {
     consentStore = _FakePrivacyConsentStore();
     mapStore = _FakeMapConsentStore();
     pushGateway = _FakePushGateway();
+    backgroundStore = _FakeBackgroundLocationConsentStore();
   });
 
   test('未同意时授权状态为 false', () async {
@@ -102,18 +120,20 @@ void main() {
     expect(consentStore.version, PrivacyConsentNotifier.policyVersion);
   });
 
-  test('撤回同意会清空状态、地图授权并解绑推送', () async {
+  test('撤回同意会清空状态、地图授权、后台定位并解绑推送', () async {
     final container = createContainer();
     addTearDown(container.dispose);
 
     await container.read(privacyConsentProvider.notifier).agree();
     await mapStore.write(MapPrivacyConsentNotifier.providerId, true);
+    await backgroundStore.write(true);
 
     await container.read(privacyConsentProvider.notifier).revoke();
 
     expect(container.read(privacyConsentProvider).valueOrNull, isFalse);
     expect(consentStore.version, 0);
     expect(mapStore.values[MapPrivacyConsentNotifier.providerId], isFalse);
+    expect(backgroundStore.agreed, isFalse);
     expect(pushGateway.deleteAliasCalls, 1);
   });
 

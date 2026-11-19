@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/config/brand.dart';
 import '../../../core/links/external_link.dart';
 import '../../../core/localization/app_languages.dart';
+import '../../../core/localization/failure_localizer.dart';
 import '../../../core/map/map_privacy_consent.dart';
 import '../../../core/privacy/background_location_consent.dart';
 import '../../../core/privacy/privacy_consent.dart';
@@ -263,9 +264,7 @@ class SettingsScreen extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.verified_user_outlined),
                   title: Text(l10n.settingsChinaCompliance),
-                  subtitle: const Text(
-                    'APP 备案号 / 地图审图号 / 第三方 SDK 清单',
-                  ),
+                  subtitle: Text(l10n.settingsComplianceBody),
                 ),
               ],
             ),
@@ -360,7 +359,7 @@ class SettingsScreen extends ConsumerWidget {
       if (!context.mounted) return;
       final message = failure.kind == FailureKind.forbidden
           ? l10n.settingsDeleteAccountForbidden
-          : failure.message;
+          : failureMessage(l10n, failure);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -497,7 +496,7 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
     await _stopTrackingIfNeeded(ref);
-    await ref.read(backgroundLocationConsentProvider.notifier).revoke();
+    // 总授权撤回时会一并清除后台定位授权（在 notifier 内统一处理）。
     await ref.read(privacyConsentProvider.notifier).revoke();
   }
 }

@@ -74,9 +74,30 @@ String failureMessage(AppLocalizations l10n, AppFailure failure) {
       return l10n.errorCommandSessionExpired;
     case 'errorCommandQueued':
       return l10n.errorCommandQueued;
+    case 'errorCommandRequeued':
+      return l10n.errorCommandRequeued;
+    case 'qrEmpty':
+      return l10n.qrEmpty;
+    case 'qrMalformed':
+      return l10n.qrMalformed;
+    case 'qrMissingUrl':
+      return l10n.qrMissingUrl;
+    default:
+      return failure.message;
+  }
+}
+
+/// 把持久化的指令状态码还原成提示文案。
+///
+/// 指令队列只存 `command.queued` / `command.requeued` 这类稳定标识，
+/// 这样用户切换语言后历史记录也能跟着变；其他内容视为已经本地化的文本原样返回。
+String commandStatusMessage(AppLocalizations l10n, String value) {
+  switch (value) {
+    case 'command.queued':
+      return l10n.errorCommandQueued;
     case 'command.requeued':
       return l10n.errorCommandRequeued;
     default:
-      return failure.message;
+      return value;
   }
 }

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/failure_localizer.dart';
+import '../../../core/localization/localization.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/command_queue.dart';
 import '../../../domain/entities/device_command.dart';
@@ -150,7 +152,7 @@ class CommandController extends AsyncNotifier<CommandState> {
     } on AppFailure catch (failure) {
       await queue.markFailed(
         row.id,
-        error: failure.message,
+        error: failureMessage(ref.read(appLocalizationsProvider), failure),
         retryable: failure.isRetryable,
       );
       await _reload();
@@ -194,7 +196,7 @@ class CommandController extends AsyncNotifier<CommandState> {
         } on AppFailure catch (failure) {
           await queue.markFailed(
             item.id,
-            error: failure.message,
+            error: failureMessage(ref.read(appLocalizationsProvider), failure),
             retryable: failure.isRetryable,
           );
           if (failure.isUnauthorized) {

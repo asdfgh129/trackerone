@@ -24,6 +24,7 @@ keys = {k for k in template if not k.startswith('@')}
 langs = ['ar','ca','cs','de','el','en','es','et','fa','fi','fr','he','hr','id','it','ja','kab','ko','lt','lv','nb','nl','pl','pt','pt_BR','ru','sk','sl','sr','th','tr','uk','vi','zh','zh_TW']
 missing = []
 problems = []
+untranslated = {}
 ph = re.compile(r'\{[a-zA-Z0-9_]+\}')
 for lang in langs:
     path = os.path.join(root, f'app_{lang}.arb')
@@ -36,8 +37,11 @@ for lang in langs:
         problems.append(f'{lang}: invalid JSON: {error}')
         continue
     local = {k for k in data if not k.startswith('@')}
-    if local != keys:
-        problems.append(f'{lang}: missing {sorted(keys-local)[:5]} extra {sorted(local-keys)[:5]}')
+    if local - keys:
+        problems.append(f'{lang}: extra keys {sorted(local-keys)[:5]}')
+    if keys - local:
+        # 缺 key 时 Flutter 会回落到英文模板，属于「未翻译」而不是结构错误。
+        untranslated[lang] = len(keys - local)
     for key in keys & local:
         source = set(ph.findall(template[key]))
         target = set(ph.findall(str(data[key])))
@@ -57,7 +61,14 @@ if problems:
     for item in problems[:30]:
         print('    -', item)
     sys.exit(1)
-print('  ✅ 35 语言 key 与占位符一致')
+print('  ✅ 35 语言文件齐全，占位符一致')
+if untranslated:
+    total = sum(untranslated.values())
+    print(f'  ⚠️  {len(untranslated)} 种语言共 {total} 条未翻译（运行时回落英文）')
+    for lang, count in sorted(untranslated.items()):
+        print(f'     - {lang}: {count}')
+else:
+    print('  ✅ 全部 key 已翻译')
 PY
 
 step "构建配置"

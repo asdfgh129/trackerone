@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/failure_localizer.dart';
 import '../../../core/network/traccar_api.dart';
 import '../../../domain/entities/server_profile.dart';
 import '../../../domain/failures.dart';
@@ -312,8 +313,13 @@ class _ServerFormSheetState extends State<_ServerFormSheet> {
         reportUrl: _report.text.trim(),
         allowSelfSigned: _allowSelfSigned,
       );
-    } on FormatException catch (error) {
-      setState(() => _submitError = error.message);
+    } on AppFailure catch (failure) {
+      setState(
+        () => _submitError = failureMessage(
+          AppLocalizations.of(context),
+          failure,
+        ),
+      );
       return null;
     }
   }
@@ -338,7 +344,7 @@ class _ServerFormSheetState extends State<_ServerFormSheet> {
       if (!mounted) return;
       setState(() {
         _testSuccess = false;
-        _testResult = failure.message;
+        _testResult = failureMessage(AppLocalizations.of(context), failure);
       });
     } finally {
       if (mounted) setState(() => _testing = false);

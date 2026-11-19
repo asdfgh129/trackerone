@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/localization/localization.dart';
 import '../../../core/privacy/background_location_consent.dart';
 import '../../../core/storage/app_preferences.dart';
 import '../../../core/tracking/sdk_tracking_engine.dart';
@@ -160,12 +161,13 @@ class TrackingController extends AsyncNotifier<TrackingState> {
       );
     }
     final current = _current;
+    final l10n = ref.read(appLocalizationsProvider);
     _set(current.copyWith(busy: true, clearError: true));
 
     try {
       final device = await api.findDeviceByUniqueId(current.uniqueId) ??
           await api.createDevice(
-            name: '本机 ${current.uniqueId}',
+            name: l10n.trackingDeviceLabel(current.uniqueId),
             uniqueId: current.uniqueId,
           );
       await ref
@@ -246,7 +248,8 @@ class TrackingController extends AsyncNotifier<TrackingState> {
         distanceMeters: 20,
         accuracy: TrackingAccuracy.high,
         heartbeatIntervalSeconds: 0,
-        notificationText: 'TrackerOne 正在上报位置',
+        notificationText:
+            ref.read(appLocalizationsProvider).trackingNotificationText,
       );
       await engine.init(config);
       await engine.start();

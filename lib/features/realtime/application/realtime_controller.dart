@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/build_config.dart';
 import '../../../core/dev/simulated_data.dart';
+import '../../../core/localization/failure_localizer.dart';
+import '../../../core/localization/localization.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/traccar_api.dart';
 import '../../../core/network/traccar_socket.dart';
@@ -157,7 +159,10 @@ class RealtimeController extends AsyncNotifier<RealtimeState> {
       if (failure.isUnauthorized) {
         unawaited(ref.read(sessionProvider.notifier).invalidate());
       }
-      return _fallback(cached, failure.message);
+      return _fallback(
+        cached,
+        failureMessage(ref.read(appLocalizationsProvider), failure),
+      );
     } catch (error) {
       return _fallback(cached, error.toString());
     }

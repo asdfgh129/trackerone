@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trackerone/domain/entities/server_profile.dart';
+import 'package:trackerone/domain/failures.dart';
 
 void main() {
   group('ServerProfile.fromInput', () {
@@ -62,18 +63,17 @@ void main() {
     });
 
     test('rejects invalid addresses', () {
-      expect(
-        () => ServerProfile.fromInput('', 'not a server'),
-        throwsFormatException,
-      );
-      expect(
-        () => ServerProfile.fromInput('', ''),
-        throwsFormatException,
-      );
-      expect(
-        () => ServerProfile.fromInput('', 'ftp://example.com'),
-        throwsFormatException,
-      );
+      for (final input in ['not a server', '', 'ftp://example.com']) {
+        expect(
+          () => ServerProfile.fromInput('', input),
+          throwsA(
+            isA<AppFailure>()
+                .having((e) => e.kind, 'kind', FailureKind.invalidRequest)
+                .having((e) => e.messageKey, 'messageKey', isNotNull),
+          ),
+          reason: '输入「$input」应被拒绝',
+        );
+      }
     });
   });
 

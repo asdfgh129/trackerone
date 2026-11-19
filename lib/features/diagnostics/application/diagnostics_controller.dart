@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/localization/failure_localizer.dart';
+import '../../../core/localization/localization.dart';
 import '../../../core/network/traccar_api.dart';
 import '../../../core/tracking/tracking_engine.dart';
 import '../../../domain/failures.dart';
@@ -140,7 +142,10 @@ class DiagnosticsController extends AsyncNotifier<DiagnosticsSnapshot> {
         reachable = true;
         version = info.version;
       } on AppFailure catch (failure) {
-        restError = failure.message;
+        restError = failureMessage(
+          ref.read(appLocalizationsProvider),
+          failure,
+        );
       } catch (error) {
         restError = error.toString();
       }

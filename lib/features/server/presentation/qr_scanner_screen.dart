@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../../core/localization/failure_localizer.dart';
 import '../../../domain/entities/server_profile.dart';
+import '../../../domain/failures.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// 解析服务器二维码。
 ///
@@ -15,13 +18,26 @@ abstract final class ServerProfileCodec {
   static ServerProfile parse(String raw) {
     final value = raw.trim();
     if (value.isEmpty) {
-      throw const FormatException('二维码内容为空');
+      throw const AppFailure(
+        FailureKind.invalidRequest,
+        '二维码内容为空',
+        messageKey: 'qrEmpty',
+      );
     }
 
     if (value.startsWith('{')) {
-      final decoded = jsonDecode(value);
+      Object? decoded;
+      try {
+        decoded = jsonDecode(value);
+      } on FormatException {
+        decoded = null;
+      }
       if (decoded is! Map) {
-        throw const FormatException('二维码 JSON 格式不正确');
+        throw const AppFailure(
+          FailureKind.invalidRequest,
+          '二维码 JSON 格式不正确',
+          messageKey: 'qrMalformed',
+        );
       }
       final map = decoded.cast<String, dynamic>();
       final address = (map['apiBaseUrl'] ??
@@ -29,7 +45,11 @@ abstract final class ServerProfileCodec {
               map['server'] ??
               map['address']) as String?;
       if (address == null || address.isEmpty) {
-        throw const FormatException('二维码缺少服务器地址');
+        throw const AppFailure(
+          FailureKind.invalidRequest,
+          '二维码缺少服务器地址',
+          messageKey: 'qrMissingUrl',
+        );
       }
       return ServerProfile.fromInput(
         (map['name'] as String?) ?? '',
@@ -44,7 +64,11 @@ abstract final class ServerProfileCodec {
       final params = uri.queryParameters;
       final address = params['url'] ?? params['server'] ?? params['address'];
       if (address == null || address.isEmpty) {
-        throw const FormatException('二维码缺少服务器地址');
+        throw const AppFailure(
+          FailureKind.invalidRequest,
+          '二维码缺少服务器地址',
+          messageKey: 'qrMissingUrl',
+        );
       }
       return ServerProfile.fromInput(
         params['name'] ?? '',
@@ -88,8 +112,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       try {
         final profile = ServerProfileCodec.parse(raw);
         Navigator.of(context).pop(profile);
-      } on FormatException catch (error) {
-        setState(() => _error = error.message);
+      } on AppFailure catch (failure) {
+        setState(
+          () => _error = failureMessage(AppLocalizations.of(context), failure),
+        );
         // 允许用户重新对准二维码。
         Future<void>.delayed(const Duration(seconds: 2), () {
           if (mounted) setState(() => _handled = false);
@@ -102,8 +128,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('扫描服务器二维码')),
+      appBar: AppBar(title: Text(l10n.qrScannerTitle)),
       body: Stack(
         children: [
           MobileScanner(
@@ -114,7 +141,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(
-                    '无法使用相机：${error.errorCode.name}',
+                    l10n.qrCameraUnavailable(error.errorCode.name),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -130,7 +157,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  _error ?? '将服务器二维码放入取景框',
+                  _error ?? l10n.qrHint,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium,
                 ),
