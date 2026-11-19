@@ -60,6 +60,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   label: Text(l10n.historyLast7Days),
                 ),
               ],
+              showSelectedIcon: false,
               selected: {_range},
               onSelectionChanged: (selection) {
                 setState(() => _range = selection.first);

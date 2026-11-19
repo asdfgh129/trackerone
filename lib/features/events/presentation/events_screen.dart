@@ -81,6 +81,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   label: Text(l10n.eventsRange30d),
                 ),
               ],
+              showSelectedIcon: false,
               selected: {_range},
               onSelectionChanged: (selection) {
                 setState(() => _range = selection.first);
