@@ -9,22 +9,45 @@ void main() {
     });
 
     test('filters by api type and keeps enum order', () {
-      final commands = DeviceCommandType.fromSupported(
-        const ['engineStop', 'positionSingle', 'unknownCommand'],
-      );
+      final commands = DeviceCommandType.fromSupported(const [
+        'engineStop',
+        'positionSingle',
+        'unknownCommand',
+      ]);
 
-      expect(
-        commands,
-        [DeviceCommandType.positionSingle, DeviceCommandType.engineStop],
-      );
+      expect(commands, [
+        DeviceCommandType.positionSingle,
+        DeviceCommandType.engineStop,
+      ]);
     });
 
     test('accepts non string values from JSON payloads', () {
-      final commands = DeviceCommandType.fromSupported(
-        const [1, 'message', null],
-      );
+      final commands = DeviceCommandType.fromSupported(const [
+        1,
+        'message',
+        null,
+      ]);
 
       expect(commands, [DeviceCommandType.message]);
+    });
+  });
+
+  group('DeviceCommandType.tryParse', () {
+    test('maps api types back to enum values', () {
+      expect(
+        DeviceCommandType.tryParse('engineStop'),
+        DeviceCommandType.engineStop,
+      );
+      expect(
+        DeviceCommandType.tryParse('positionPeriodic'),
+        DeviceCommandType.positionPeriodic,
+      );
+    });
+
+    test('returns null for unknown or empty input', () {
+      expect(DeviceCommandType.tryParse(null), isNull);
+      expect(DeviceCommandType.tryParse(''), isNull);
+      expect(DeviceCommandType.tryParse('teleport'), isNull);
     });
   });
 
@@ -46,10 +69,7 @@ void main() {
       buildCommandAttributes(DeviceCommandType.message, message: 'hello'),
       {'message': 'hello'},
     );
-    expect(
-      buildCommandAttributes(DeviceCommandType.positionSingle),
-      isEmpty,
-    );
+    expect(buildCommandAttributes(DeviceCommandType.positionSingle), isEmpty);
     expect(
       buildCommandAttributes(DeviceCommandType.message, message: ''),
       isEmpty,

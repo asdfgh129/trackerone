@@ -32,24 +32,33 @@ enum DeviceCommandType {
       this == DeviceCommandType.message;
 
   IconData get icon => switch (this) {
-        DeviceCommandType.positionSingle => Icons.my_location,
-        DeviceCommandType.positionPeriodic => Icons.timer_outlined,
-        DeviceCommandType.engineStop => Icons.power_settings_new,
-        DeviceCommandType.engineResume => Icons.play_circle_outline,
-        DeviceCommandType.alarmArm => Icons.lock_outline,
-        DeviceCommandType.alarmDisarm => Icons.lock_open,
-        DeviceCommandType.rebootDevice => Icons.restart_alt,
-        DeviceCommandType.factoryReset => Icons.delete_forever_outlined,
-        DeviceCommandType.message => Icons.message_outlined,
-      };
+    DeviceCommandType.positionSingle => Icons.my_location,
+    DeviceCommandType.positionPeriodic => Icons.timer_outlined,
+    DeviceCommandType.engineStop => Icons.power_settings_new,
+    DeviceCommandType.engineResume => Icons.play_circle_outline,
+    DeviceCommandType.alarmArm => Icons.lock_outline,
+    DeviceCommandType.alarmDisarm => Icons.lock_open,
+    DeviceCommandType.rebootDevice => Icons.restart_alt,
+    DeviceCommandType.factoryReset => Icons.delete_forever_outlined,
+    DeviceCommandType.message => Icons.message_outlined,
+  };
+
+  /// 把服务端下发的 `type` 还原成枚举；未知类型返回 null。
+  static DeviceCommandType? tryParse(String? apiType) {
+    for (final value in values) {
+      if (value.apiType == apiType) return value;
+    }
+    return null;
+  }
 
   /// 从 `supportedCommands` 构建可选指令；列表为空时返回常用集合。
   static List<DeviceCommandType> fromSupported(Iterable<Object?>? supported) {
     if (supported == null) return const [];
-    final names = supported
-        .map((item) => item?.toString() ?? '')
-        .where((name) => name.isNotEmpty)
-        .toSet();
+    final names =
+        supported
+            .map((item) => item?.toString() ?? '')
+            .where((name) => name.isNotEmpty)
+            .toSet();
     if (names.isEmpty) return const [];
     return DeviceCommandType.values
         .where((command) => names.contains(command.apiType))
@@ -65,11 +74,11 @@ Map<String, dynamic> buildCommandAttributes(
 }) {
   return switch (type) {
     DeviceCommandType.positionPeriodic => {
-        if (frequencySeconds != null) 'frequency': frequencySeconds,
-      },
+      if (frequencySeconds != null) 'frequency': frequencySeconds,
+    },
     DeviceCommandType.message => {
-        if (message != null && message.isNotEmpty) 'message': message,
-      },
+      if (message != null && message.isNotEmpty) 'message': message,
+    },
     _ => const {},
   };
 }

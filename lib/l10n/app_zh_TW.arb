@@ -394,5 +394,22 @@
   "eventsRange7d": "最近 7 天",
   "eventsRange30d": "最近 30 天",
   "eventsLimited": "僅顯示最近 {count} 筆",
-  "historySampled": "時間範圍較大，軌跡已抽稀顯示，點數為抽稀後的數量。"
+  "historySampled": "時間範圍較大，軌跡已抽稀顯示，點數為抽稀後的數量。",
+  "inboxTitle": "訊息中心",
+  "settingsInboxBody": "伺服器下發的通知、訊息與指令",
+  "inboxEmpty": "暫無訊息",
+  "inboxEmptyBody": "伺服器下發的通知與指令會顯示在這裡。",
+  "inboxMarkAllRead": "全部標為已讀",
+  "inboxKindCommand": "指令",
+  "inboxKindNotice": "通知",
+  "inboxKindChat": "訊息",
+  "inboxExecute": "執行",
+  "inboxCommandUnsupported": "App 暫不支援該指令類型",
+  "inboxCommandConfirmTitle": "執行指令",
+  "inboxCommandConfirmBody": "向裝置 #{deviceId} 傳送 {command}？",
+  "inboxCommandDestructiveWarning": "該操作會斷油斷電或清除資料，請確認後再執行。",
+  "inboxCommandSent": "指令已傳送",
+  "inboxCommandQueued": "目前離線，指令已加入佇列",
+  "inboxGatewayMissing": "未設定訊息閘道，無法同步伺服器訊息。",
+  "inboxExpired": "已過期"
 }

@@ -112,11 +112,14 @@
 8. **OIDC/SSO、多服务器切换 UI**：服务器档案可存多个，但切换与 OIDC 未完成。
 9. ✅ **错误文案国际化**（2026-11-19）：数据层 `AppFailure` 增加 `messageKey`，
    界面统一走 `core/localization/failure_localizer.dart`；二维码扫描、登录、服务器
-   配置、指令队列、诊断、实时刷新等提示均已本地化。仍待补：31 种语言的 52 个新增
+   配置、指令队列、诊断、实时刷新等提示均已本地化。仍待补：32 种语言的 74 个新增
    key（当前回落英文，见 `docs/13` 说明）；iOS 权限弹窗文案仍为英文系统默认。
 10. **无障碍**：图标按钮部分有 tooltip，但缺少系统性的语义标签与 200% 字体回归。
 11. **横屏/平板**：未做专门布局。
 12. **性能实测**：聚合与合流代码已就位，但未记录 500/1000 设备帧率与内存。
+13. 🟡 **服务端下行消息**（2026-11-19）：App 侧消息中心已完成（推送壳 + REST 收件箱 + ACK，
+    见 `docs/17`），网关 `GET /v1/messages`、ACK 与 Traccar 触发仍未实现，
+    当前只能用 `--dart-define=INBOX_DEMO=true` 假数据联调。
 
 ### P1 代码缺陷修复（2026-11-13）
 
@@ -199,13 +202,14 @@
 | 检查 | 命令 | 结果 |
 |---|---|---|
 | 静态分析 | `flutter analyze` | ✅ 0 issue |
-| 单元/组件测试 | `flutter test` | ✅ 91 通过（新增二维码解析 6 个、后台定位授权 3 个，隐私撤回用例覆盖后台定位） |
+| 单元/组件测试 | `flutter test` | ✅ 117 通过（新增收件箱解析/控制器 23 个、二维码解析 6 个、后台定位授权 3 个） |
 | ARB | `tool/release_check.sh --fast` | ✅ 35 个文件结构一致；⚠️ 31 种语言 52 个新增 key 未翻译（回落英文） |
 | 错误文案 | 代码走查 | ✅ 网络/领域层改用 `messageKey`，界面统一 `failureMessage()` |
 | Android 构建 | `flutter build apk --release --split-per-abi` | ✅ 通用包 + 3 个 ABI 包，签名 `CN=TrackerOne`（SHA256 `cc80b19c…`），versionCode 4（通用）/ 1004 / 2004 / 4004 |
 | Android AAB | `flutter build appbundle --release` | ✅ `TrackerOne-0.4.0-release.aab`，无 `AD_ID` |
 | iOS 构建 | `flutter build ios --release --no-codesign` | ✅ `Runner.app` 含 `PrivacyInfo.xcprivacy`，Bundle ID `com.trackerone.app` |
 | 产物校验 | `shasum -a 256 dist/*` | ✅ 6 个产物已生成（未带 `PUSH_GATEWAY_URL`，仅本地验证） |
+| 下行消息（App 侧） | `flutter test test/inbox_*` | ✅ 消息中心、去重、ACK 容忍、已读、未登录/无网关分支；网关接口仍待实现 |
 
 已知构建告警：`AMapFoundation` 当前版本不含 arm64 模拟器切片，Apple Silicon +
 iOS 26+ 模拟器会提示不支持 arm64。当前 Intel Mac 模拟器构建通过；换 Apple

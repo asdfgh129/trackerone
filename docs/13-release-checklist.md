@@ -91,7 +91,7 @@ xcrun altool --upload-app --type ios \
 - [x] 用户同意隐私政策前不初始化地图/推送/统计 SDK（首启全局弹窗 + 地图独立授权）
 - [x] 后台定位单独授权与撤回（`core/privacy/background_location_consent.dart`，
       设置页可关闭；撤回总隐私授权时一并清除并停止后台上报）
-- [ ] 新增 52 个 ARB key 的人工翻译：31 种语言当前回落英文（
+- [ ] 新增 74 个 ARB key 的人工翻译：32 种语言当前回落英文（共 2368 条，
       `flutter gen-l10n` 会列出未翻译条目），上架前至少补齐 en 之外的商店主推语言
 - [x] 提供账号注销与数据删除入口（已接 `DELETE /api/users/{id}`，服务端策略待确认）
 - [ ] APP 备案号、ICP 备案、地图审图号展示在设置/关于页；
@@ -112,14 +112,17 @@ flutter build ios --simulator --no-codesign
 ```
 
 - [x] `dart analyze` 0 issue；
-- [x] `flutter test` 全绿（78 项）；
+- [x] `flutter test` 全绿（117 项）；
 - [x] 35 个 ARB 文件 key 与占位符一致；
 - [ ] 真机测试矩阵（docs/11）P0 用例通过；
 - [ ] 后台上报 24h / 72h 数据达标；
 - [ ] 500/1000 设备地图 ≥ 30fps（或记录明确风险）；
 - [ ] 冷启动 < 2.5s；
 - [ ] 崩溃率、ANR 在灰度期无异常；
-- [ ] 弱网、离线、权限撤销、Token 失效均有可恢复路径。
+- [ ] 弱网、离线、权限撤销、Token 失效均有可恢复路径；
+- [x] 消息中心（`/inbox`）：空态 / 错误态 / 网关未配置 / 离线队列均有处理；
+- [ ] 消息网关 `GET /v1/messages` 与 ACK 接口上线，并完成真机联调
+      （当前仅 `--dart-define=INBOX_DEMO=true` 假数据可走通，见 [docs/17](17-adr-downlink.md)）。
 
 ## 7. 性能基线记录
 
@@ -147,7 +150,8 @@ flutter build ios --simulator --no-codesign
 
 - [ ] 关闭调试入口与 `SIMULATE_DEVICES`；
 - [x] 确认 `PUSH_PROVIDER` / `MAP_PROVIDER` 为生产值（默认 `jpush` / `amap`）；
-- [ ] 正式包必须带 `--dart-define=PUSH_GATEWAY_URL=<网关域名>`，否则网关丢弃全部事件
+- [ ] 正式包必须带 `--dart-define=PUSH_GATEWAY_URL=<网关域名>`，否则网关丢弃全部事件、
+      消息中心只显示「未配置消息网关」
 - [ ] 确认无测试服务器地址、测试账号、测试 Key（`Brand.demoServerUrl` 仍为 demo）；
 - [ ] 确认日志不输出 Token、密码、完整位置；
 - [x] 确认 `tool/release_check.sh` 通过；

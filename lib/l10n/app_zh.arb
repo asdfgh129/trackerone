@@ -418,5 +418,22 @@
   "eventsRange7d": "最近 7 天",
   "eventsRange30d": "最近 30 天",
   "eventsLimited": "仅显示最近 {count} 条",
-  "historySampled": "时间范围较大，轨迹已抽稀显示，点数为抽稀后的数量。"
+  "historySampled": "时间范围较大，轨迹已抽稀显示，点数为抽稀后的数量。",
+  "inboxTitle": "消息中心",
+  "settingsInboxBody": "服务端下发的通知、消息与指令",
+  "inboxEmpty": "暂无消息",
+  "inboxEmptyBody": "服务端下发的通知与指令会显示在这里。",
+  "inboxMarkAllRead": "全部标为已读",
+  "inboxKindCommand": "指令",
+  "inboxKindNotice": "通知",
+  "inboxKindChat": "消息",
+  "inboxExecute": "执行",
+  "inboxCommandUnsupported": "App 暂不支持该指令类型",
+  "inboxCommandConfirmTitle": "执行指令",
+  "inboxCommandConfirmBody": "向设备 #{deviceId} 发送 {command}？",
+  "inboxCommandDestructiveWarning": "该操作会断油断电或清除数据，请确认后再执行。",
+  "inboxCommandSent": "指令已发送",
+  "inboxCommandQueued": "当前离线，指令已加入队列",
+  "inboxGatewayMissing": "未配置消息网关，无法同步服务端消息。",
+  "inboxExpired": "已过期"
 }

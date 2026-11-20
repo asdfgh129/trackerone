@@ -19,6 +19,7 @@
 | ADR-013 | 新增轻量推送网关作为唯一推送出口 | 已接受 |
 | ADR-014 | 中国大陆合规：备案 + 隐私同意流 + SDK 清单 | 已接受 |
 | ADR-015 | 包名 `com.example.trackerone` 仅用于开发 | 已被取代：2026-11-06 定稿 `com.trackerone.app` |
+| ADR-016 | 下行消息采用「推送唤醒 + REST 收件箱 + ACK」，不引入 MQTT | 已接受，见 [17-adr-downlink.md](17-adr-downlink.md) |
 
 ---
 

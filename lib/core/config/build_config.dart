@@ -63,6 +63,10 @@ abstract final class BuildConfig {
     'PUSH_GATEWAY_URL',
   );
 
+  /// 开发联调用：`--dart-define=INBOX_DEMO=true` 时消息中心使用本地假数据，
+  /// 不需要网关即可走通「列表 → 未读 → 执行指令 → 标记已读」流程。
+  static const bool inboxDemo = bool.fromEnvironment('INBOX_DEMO');
+
   /// 崩溃上报：`firebase`（海外/开发）或 `none`（中国大陆默认，接 Bugly 后改）。
   static const String crashReporter = String.fromEnvironment(
     'CRASH_REPORTER',

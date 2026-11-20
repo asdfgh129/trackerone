@@ -558,5 +558,32 @@
         "type": "int"
       }
     }
-  }
+  },
+  "inboxTitle": "Messages",
+  "settingsInboxBody": "Server notifications, messages and commands",
+  "inboxEmpty": "No messages",
+  "inboxEmptyBody": "Notifications and commands sent by the server will appear here.",
+  "inboxMarkAllRead": "Mark all as read",
+  "inboxKindCommand": "Command",
+  "inboxKindNotice": "Notice",
+  "inboxKindChat": "Message",
+  "inboxExecute": "Run",
+  "inboxCommandUnsupported": "This command type is not supported by the app.",
+  "inboxCommandConfirmTitle": "Run command",
+  "inboxCommandConfirmBody": "Send {command} to device #{deviceId}?",
+  "inboxCommandDestructiveWarning": "This can stop the vehicle or erase data. Continue only if you are sure.",
+  "inboxCommandSent": "Command sent",
+  "inboxCommandQueued": "You are offline: the command has been queued",
+  "inboxGatewayMissing": "The message gateway is not configured, so messages cannot be synced.",
+  "@inboxCommandConfirmBody": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      },
+      "deviceId": {
+        "type": "int"
+      }
+    }
+  },
+  "inboxExpired": "Expired"
 }

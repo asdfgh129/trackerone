@@ -18,6 +18,7 @@ import '../../../core/storage/token_store.dart';
 import '../../../domain/failures.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/application/session_controller.dart';
+import '../../inbox/application/inbox_controller.dart';
 import '../../server/application/server_profiles_controller.dart';
 import '../../tracking/application/tracking_controller.dart';
 import '../../tracking/presentation/background_location_consent_sheet.dart';
@@ -119,6 +120,25 @@ class SettingsScreen extends ConsumerWidget {
                   subtitle: Text(l10n.diagnosticsBody),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/diagnostics'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.inbox_outlined),
+                  title: Text(l10n.inboxTitle),
+                  subtitle: Text(l10n.settingsInboxBody),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (ref.watch(inboxUnreadProvider) > 0) ...[
+                        Badge(
+                          label: Text('${ref.watch(inboxUnreadProvider)}'),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                  onTap: () => context.push('/inbox'),
                 ),
               ],
             ),

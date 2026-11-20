@@ -14,6 +14,7 @@ import '../features/diagnostics/presentation/diagnostics_screen.dart';
 import '../features/events/presentation/event_detail_screen.dart';
 import '../features/events/presentation/events_screen.dart';
 import '../features/history/presentation/history_screen.dart';
+import '../features/inbox/presentation/inbox_screen.dart';
 import '../features/map/presentation/map_screen.dart';
 import '../features/onboarding/presentation/permissions_screen.dart';
 import '../features/onboarding/presentation/splash_screen.dart';
@@ -142,6 +143,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/inbox',
+        builder: (context, state) => const InboxScreen(),
+      ),
+      GoRoute(
         path: '/diagnostics',
         builder: (context, state) => const DiagnosticsScreen(),
       ),
@@ -159,10 +164,24 @@ final routerProvider = Provider<GoRouter>((ref) {
   // 推送点击直达事件；未登录时先缓存，登录完成后再跳转。
   final push = ref.watch(pushServiceProvider);
   int? pendingEventId;
+  var pendingInbox = false;
 
   void handlePush(PushMessage message) {
     final session = ref.read(sessionProvider).valueOrNull;
     final authenticated = session?.isAuthenticated ?? false;
+
+    // 服务端下发的消息：点击通知直接进入消息中心。
+    final inboxId = message.data['inboxId']?.toString();
+    if (inboxId != null && inboxId.isNotEmpty) {
+      if (!authenticated) {
+        pendingInbox = true;
+        return;
+      }
+      if (router.state.uri.path != '/inbox') {
+        router.push('/inbox');
+      }
+      return;
+    }
 
     if (message.isCommand && authenticated) {
       // 远程指令：让 SDK 立即上报一次位置。
@@ -202,6 +221,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(sessionProvider, (_, next) {
     router.refresh();
     if (next.valueOrNull?.isAuthenticated != true) return;
+    if (pendingInbox) {
+      pendingInbox = false;
+      if (router.state.uri.path != '/inbox') router.push('/inbox');
+      return;
+    }
     final eventId = pendingEventId;
     if (eventId == null) return;
     pendingEventId = null;
