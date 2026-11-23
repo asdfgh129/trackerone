@@ -223,3 +223,7 @@ Silicon 后地图相关调试需使用真机（或等待高德 SDK 更新）。
 | App 测试 | `flutter test` | ✅ 117 通过（游标改为会话内状态后回归通过） |
 | 发布自检 | `tool/release_check.sh` | ✅ ARB / analyze / test / Go vet + test 全绿 |
 | 收件箱契约 | `server/README.md` 2.4 | ✅ `GET/POST /v1/messages`、`POST .../ack`、`DELETE /v1/messages` |
+| Android 构建 | `flutter build apk --release [--split-per-abi]` | ✅ 通用包 + 3 个 ABI 包 + AAB；签名 `CN=TrackerOne`（SHA256 `cc80b19c…`），versionCode 4 / 1004 / 2004 / 4004 |
+| Android 权限 | `aapt2 dump permissions` | ✅ 无 `AD_ID` / `ACCESS_ADSERVICES_*`；包名 `com.trackerone.app`、版本 0.4.0 |
+| iOS 构建 | `flutter build ios --release --no-codesign` | ✅ `Runner.app` 95.7MB，含 `PrivacyInfo.xcprivacy`，Bundle ID `com.trackerone.app` / 0.4.0 |
+| 产物校验 | `shasum -a 256 dist/*` | ✅ 6 个产物已更新（未带 `PUSH_GATEWAY_URL`，仅本地验证），校验和见 `dist/SHA256SUMS` |
