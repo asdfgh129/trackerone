@@ -82,8 +82,8 @@ trackerone/
 │   │   └── observability/    # 崩溃上报
 │   └── features/             # 按业务域划分
 ├── server/                   # Traccar 推送补丁 + 网关契约
-├── test/                     # 单元 / Widget 测试
-├── integration_test/         # 端到端测试（待建）
+├── test/                     # 单元 / Widget 测试（端到端测试待建）
+├── docs/                     # PRD / 架构 / 发布与 ADR（含下行消息 docs/17）
 ├── tool/bootstrap.sh         # 生成 android/ios 平台工程
 ├── tool/verify.sh            # pub get / analyze / test
 ├── tool/release_check.sh     # 发布自检：ARB / 配置 / analyze / test
