@@ -134,7 +134,7 @@
 | 事件固定 24h、历史无分页/上限 | 事件支持 24h/7d/30d 与 300 条上限；历史按天分段请求并在 2 万点后抽稀（`HistoryTrace.sampled`） | ✅ |
 | 约 58 处中文硬编码 | 数据层改为 `messageKey`，界面统一本地化 | ✅ |
 | 后台定位缺少单独授权 | `BackgroundLocationConsentNotifier` + 单独同意弹窗，撤回总授权时一并清除 | ✅ |
-| 新增 52 个 ARB key 未翻译 31 种语言 | 回落英文，待人工翻译 | 🟡 |
+| 新增 74 个 ARB key 未翻译 32 种语言 | 回落英文，待人工翻译 | 🟡 |
 | 首启缺少全局隐私政策同意页 | 新增 `PrivacyConsentGate`，同意前不初始化地图/推送/崩溃上报 | ✅ |
 
 ### P2（工程与运维）
@@ -203,7 +203,7 @@
 |---|---|---|
 | 静态分析 | `flutter analyze` | ✅ 0 issue |
 | 单元/组件测试 | `flutter test` | ✅ 117 通过（新增收件箱解析/控制器 23 个、二维码解析 6 个、后台定位授权 3 个） |
-| ARB | `tool/release_check.sh --fast` | ✅ 35 个文件结构一致；⚠️ 31 种语言 52 个新增 key 未翻译（回落英文） |
+| ARB | `tool/release_check.sh --fast` | ✅ 35 个文件结构一致；⚠️ 32 种语言 74 个新增 key（2368 条）未翻译，回落英文 |
 | 错误文案 | 代码走查 | ✅ 网络/领域层改用 `messageKey`，界面统一 `failureMessage()` |
 | Android 构建 | `flutter build apk --release --split-per-abi` | ✅ 通用包 + 3 个 ABI 包，签名 `CN=TrackerOne`（SHA256 `cc80b19c…`），versionCode 4（通用）/ 1004 / 2004 / 4004 |
 | Android AAB | `flutter build appbundle --release` | ✅ `TrackerOne-0.4.0-release.aab`，无 `AD_ID` |
