@@ -28,15 +28,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   @override
   void initState() {
     super.initState();
-    // 首次构建已经拉取过；只有上次失败或为空时才补一次同步，
-    // 避免每次进入页面都重复请求。
+    // provider 正在首次 build 时跳过，避免并发重复请求；
+    // 已有数据（含上次失败）时做一次增量刷新。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final snapshot = ref.read(inboxProvider);
-      final value = snapshot.valueOrNull;
-      final needsSync =
-          value == null || (value.error != null && !value.gatewayMissing);
-      if (needsSync) unawaited(ref.read(inboxProvider.notifier).sync());
+      if (ref.read(inboxProvider) is AsyncData<InboxState>) {
+        unawaited(ref.read(inboxProvider.notifier).sync());
+      }
     });
   }
 

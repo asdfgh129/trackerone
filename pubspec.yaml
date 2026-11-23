@@ -69,8 +69,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  integration_test:
-    sdk: flutter
+  # integration_test 暂未使用；Release 构建会把它注入插件注册表而缺少
+  # Android 依赖，导致 `:app:compileReleaseJavaWithJavac` 失败。
+  # 写端到端测试时再加回，并确认 release 构建通过。
   flutter_lints: ^6.0.0
   build_runner: ^2.4.13
   drift_dev: ^2.28.0
