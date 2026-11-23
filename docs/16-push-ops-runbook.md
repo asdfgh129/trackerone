@@ -236,4 +236,46 @@ tail -f /opt/traccar/logs/traccar.log | grep -i webhook
 | 推送网关 | ✅ 代码完成（`server/push-gateway/`，Go + Redis，Docker 可部署），待部署与填密钥 |
 | Traccar webhook 通知器 | ✅ 补丁已写好，待打到你服务器 |
 | 客户端 → 网关别名同步 | ✅ 代码完成（需构建时带 `PUSH_GATEWAY_URL`） |
+| 收件箱 API（下行消息） | ✅ 代码完成（`GET/POST /v1/messages`、ACK、注销清理），待部署后自检 |
 | 真机锁屏/冷启动验证 | ⛔ 待真机 |
+
+---
+
+## 10. 收件箱接口自检（网关部署后）
+
+前置：网关环境变量包含 `ADMIN_TOKEN`、`TRACCAR_BASE_URL`，App 已用
+`--dart-define=PUSH_GATEWAY_URL=https://push.<域名>` 构建并登录（完成别名注册）。
+
+```bash
+# 1) 管理员下发一条消息（userId / serverId 与 alias 一致）
+curl -sS -X POST https://push.example.com/v1/messages \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"userId":1,"kind":"notice","title":"测试","body":"网关自检"}'
+
+# 2) 用 Traccar Token 拉取（应看到上一条消息，并拿到 nextCursor）
+curl -sS "https://push.example.com/v1/messages?limit=50" \
+  -H "Authorization: Bearer $TRACCAR_TOKEN"
+
+# 3) 回执（204 表示成功；重复调用同样返回 204）
+curl -sS -o /dev/null -w '%{http_code}\n' -X POST \
+  "https://push.example.com/v1/messages/<消息id>/ack" \
+  -H "Authorization: Bearer $TRACCAR_TOKEN"
+
+# 4) 注销清理
+curl -sS -X DELETE "https://push.example.com/v1/messages?userId=1&serverId=1" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+预期：
+
+- 下发返回 `{"message":{...},"push":"sent|no_alias"}`；`no_alias` 表示手机还没注册别名，
+  消息已入库，App 下次同步仍能拉到；
+- 推送只带 `inboxId`，通知正文固定为「新消息」，不泄露调度内容；
+- 手机端进入「设置 → 消息中心」可见；点击通知直接跳转 `/inbox`。
+
+没有网关时先用假数据走通交互：
+
+```bash
+flutter run --dart-define=INBOX_DEMO=true
+```

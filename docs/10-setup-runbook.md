@@ -388,10 +388,17 @@ flutter run \
 ```bash
 flutter run \
   --dart-define=PUSH_PROVIDER=jpush \
-  --dart-define=JPUSH_APP_KEY=你的AppKey
+  --dart-define=JPUSH_APP_KEY=你的AppKey \
+  --dart-define=PUSH_GATEWAY_URL=https://push.example.com
 ```
 
-验收：登录后 `setAlias("u1@1")` 成功 → 服务端调网关 → 手机收到通知。
+- `PUSH_GATEWAY_URL` 同时用于别名注册与「消息中心」拉取（`/v1/messages`）；
+  正式包必须带，否则收件箱只显示「未配置消息网关」；
+- 没有网关时可加 `--dart-define=INBOX_DEMO=true`，用本地假数据走通
+  「列表 → 未读 → 执行指令 → 标记已读」，见 `docs/17-adr-downlink.md`。
+
+验收：登录后 `setAlias("u1@1")` 成功 → 服务端调网关 → 手机收到通知；
+管理员 `POST /v1/messages` 后，设置页「消息中心」出现未读角标。
 
 未配置推送时用 `PUSH_PROVIDER=none`，应用内仍可通过 WebSocket 收事件。
 
