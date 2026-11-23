@@ -38,6 +38,8 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/events", s.handleEvent)
 	mux.HandleFunc("/v1/aliases", s.handleAliasCollection)
 	mux.HandleFunc("/v1/aliases/", s.handleAliasItem)
+	mux.HandleFunc("/v1/messages", s.handleMessages)
+	mux.HandleFunc("/v1/messages/", s.handleMessageItem)
 	mux.HandleFunc("/v1/dead", s.handleDeadLetters)
 	mux.HandleFunc("/v1/flush", s.handleFlush)
 	mux.HandleFunc("/healthz", s.handleHealth)
@@ -195,5 +197,91 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		return
+	}
+}
+
+// handleMessages 处理收件箱：拉取（用户）、下发（管理员）、清空（管理员）。
+func (s *Server) handleMessages(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		messages, cursor, err := s.service.ListMessages(
+			r.Context(),
+			bearerToken(r),
+			r.URL.Query().Get("since"),
+			limit,
+		)
+		if errors.Is(err, gateway.ErrUnauthorized) {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "Token 无效"})
+			return
+		}
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"messages":   messages,
+			"nextCursor": cursor,
+		})
+	case http.MethodPost:
+		if !s.requireAdmin(w, r) {
+			return
+		}
+		var request model.InboxSendRequest
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&request); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "解析请求体失败"})
+			return
+		}
+		message, push, err := s.service.SendMessage(r.Context(), request)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, map[string]any{
+			"message": message,
+			"push":    push,
+		})
+	case http.MethodDelete:
+		if !s.requireAdmin(w, r) {
+			return
+		}
+		userID, _ := strconv.ParseInt(r.URL.Query().Get("userId"), 10, 64)
+		serverID, _ := strconv.ParseInt(r.URL.Query().Get("serverId"), 10, 64)
+		if err := s.service.DeleteMessages(r.Context(), userID, serverID); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "deleted"})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "仅支持 GET / POST / DELETE"})
+	}
+}
+
+// handleMessageItem 处理 POST /v1/messages/{id}/ack。
+func (s *Server) handleMessageItem(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "仅支持 POST"})
+		return
+	}
+	rest := strings.TrimPrefix(r.URL.Path, "/v1/messages/")
+	if !strings.HasSuffix(rest, "/ack") {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "未知接口"})
+		return
+	}
+	id := strings.TrimSuffix(rest, "/ack")
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "缺少消息 id"})
+		return
+	}
+	err := s.service.AckMessage(r.Context(), bearerToken(r), id)
+	switch {
+	case errors.Is(err, gateway.ErrUnauthorized):
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "Token 无效"})
+	case errors.Is(err, gateway.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "消息不存在"})
+	case err != nil:
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+	default:
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

@@ -89,3 +89,33 @@ type DeadLetter struct {
 	Attempts int       `json:"attempts"`
 	FailedAt time.Time `json:"failedAt"`
 }
+
+// InboxMessage 是服务端下发给 App 用户的消息（收件箱契约见 docs/17）。
+//
+// Seq 是网关内部单调递增序号，用作增量游标；对外只暴露 id。
+type InboxMessage struct {
+	ID        string         `json:"id"`
+	Seq       int64          `json:"-"`
+	UserID    int64          `json:"-"`
+	ServerID  int64          `json:"-"`
+	Kind      string         `json:"kind"`
+	Title     string         `json:"title,omitempty"`
+	Body      string         `json:"body,omitempty"`
+	Data      map[string]any `json:"data,omitempty"`
+	CreatedAt time.Time      `json:"createdAt"`
+	ExpiresAt *time.Time     `json:"expiresAt,omitempty"`
+	AckedAt   *time.Time     `json:"-"`
+}
+
+// InboxSendRequest 是管理端写入一条收件箱消息的请求体。
+//
+// ExpiresIn 单位为秒；为 0 时按 kind 取默认 TTL（command 1h / notice 7d / chat 3d）。
+type InboxSendRequest struct {
+	UserID    int64          `json:"userId"`
+	ServerID  int64          `json:"serverId,omitempty"`
+	Kind      string         `json:"kind"`
+	Title     string         `json:"title"`
+	Body      string         `json:"body"`
+	Data      map[string]any `json:"data,omitempty"`
+	ExpiresIn int64          `json:"expiresIn,omitempty"`
+}

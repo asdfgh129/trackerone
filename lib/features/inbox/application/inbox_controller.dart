@@ -86,31 +86,27 @@ class InboxController extends AsyncNotifier<InboxState> {
 
     final scope = _scope(server.id, account.id);
     final store = ref.watch(inboxStoreProvider);
-    final cursor = await store.readCursor(scope);
     final readIds = await store.readReadIds(scope);
     try {
+      // 冷启动不沿用旧游标：消息正文不落盘，需重新拉取最新一页才能展示。
       final page = await api.fetch(
         token: token,
-        cursor: cursor,
+        cursor: null,
         limit: _pageSize,
       );
-      if (page.nextCursor != null) {
-        await store.writeCursor(scope, page.nextCursor!);
-      }
       await _ackAll(api, token, page.messages);
       return InboxState(
         messages: page.messages,
         readIds: readIds,
-        cursor: page.nextCursor ?? cursor,
+        cursor: page.nextCursor,
       );
     } on AppFailure catch (failure) {
       return InboxState(
         readIds: readIds,
-        cursor: cursor,
         error: failureMessage(ref.read(appLocalizationsProvider), failure),
       );
     } catch (error) {
-      return InboxState(readIds: readIds, cursor: cursor, error: '$error');
+      return InboxState(readIds: readIds, error: '$error');
     }
   }
 
@@ -147,9 +143,6 @@ class InboxController extends AsyncNotifier<InboxState> {
       );
       final merged = _merge(current.messages, page.messages);
       final cursor = page.nextCursor ?? current.cursor;
-      if (page.nextCursor != null) {
-        await store.writeCursor(scope, page.nextCursor!);
-      }
       await _ackAll(api, token, page.messages);
       final readIds = await store.readReadIds(scope);
       state = AsyncData(

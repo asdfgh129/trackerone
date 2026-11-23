@@ -121,8 +121,9 @@ flutter build ios --simulator --no-codesign
 - [ ] 崩溃率、ANR 在灰度期无异常；
 - [ ] 弱网、离线、权限撤销、Token 失效均有可恢复路径；
 - [x] 消息中心（`/inbox`）：空态 / 错误态 / 网关未配置 / 离线队列均有处理；
-- [ ] 消息网关 `GET /v1/messages` 与 ACK 接口上线，并完成真机联调
-      （当前仅 `--dart-define=INBOX_DEMO=true` 假数据可走通，见 [docs/17](17-adr-downlink.md)）。
+- [x] 消息网关接口与存储已实现（`GET/POST /v1/messages`、ACK、注销清理，
+      见 `server/README.md` 2.4 与 [docs/17](17-adr-downlink.md)）；Go 测试通过；
+- [ ] 部署网关并完成收件箱真机联调（App 侧可用 `--dart-define=INBOX_DEMO=true` 先走通交互）。
 
 ## 7. 性能基线记录
 

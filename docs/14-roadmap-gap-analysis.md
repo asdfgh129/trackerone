@@ -117,9 +117,9 @@
 10. **无障碍**：图标按钮部分有 tooltip，但缺少系统性的语义标签与 200% 字体回归。
 11. **横屏/平板**：未做专门布局。
 12. **性能实测**：聚合与合流代码已就位，但未记录 500/1000 设备帧率与内存。
-13. 🟡 **服务端下行消息**（2026-11-19）：App 侧消息中心已完成（推送壳 + REST 收件箱 + ACK，
-    见 `docs/17`），网关 `GET /v1/messages`、ACK 与 Traccar 触发仍未实现，
-    当前只能用 `--dart-define=INBOX_DEMO=true` 假数据联调。
+13. 🟡 **服务端下行消息**（2026-11-23）：App 侧消息中心与网关接口/存储均已完成
+    （推送壳 + REST 收件箱 + ACK，见 `docs/17` 与 `server/README.md` 2.4）；
+    仍待 Deploy 后真机联调，以及 Traccar/后台的下发入口与审计页面。
 
 ### P1 代码缺陷修复（2026-11-13）
 
@@ -214,3 +214,12 @@
 已知构建告警：`AMapFoundation` 当前版本不含 arm64 模拟器切片，Apple Silicon +
 iOS 26+ 模拟器会提示不支持 arm64。当前 Intel Mac 模拟器构建通过；换 Apple
 Silicon 后地图相关调试需使用真机（或等待高德 SDK 更新）。
+
+### 2026-11-23 增量验证（收件箱网关）
+
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| 网关测试 | `cd server/push-gateway && go test ./...` | ✅ 新增存储/HTTP 用例：下发、游标、ACK 幂等、越权与清空 |
+| App 测试 | `flutter test` | ✅ 117 通过（游标改为会话内状态后回归通过） |
+| 发布自检 | `tool/release_check.sh` | ✅ ARB / analyze / test / Go vet + test 全绿 |
+| 收件箱契约 | `server/README.md` 2.4 | ✅ `GET/POST /v1/messages`、`POST .../ack`、`DELETE /v1/messages` |

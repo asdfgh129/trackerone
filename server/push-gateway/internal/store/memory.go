@@ -21,10 +21,16 @@ type MemoryStore struct {
 	windows     map[string]*rateWindow
 	deferred    []model.Deferred
 	deadLetters []model.DeadLetter
+	messages    map[string]model.InboxMessage
+	inbox       map[string][]string
+	messageSeq  int64
 	aliasTTL    time.Duration
 	eventTTL    time.Duration
 	now         func() time.Time
 }
+
+// maxInboxMessagesPerUser 限制单个用户/服务器保留的消息数，避免内存无限增长。
+const maxInboxMessagesPerUser = 1000
 
 type rateWindow struct {
 	count int
@@ -37,6 +43,8 @@ func NewMemory(aliasTTL, eventTTL time.Duration) *MemoryStore {
 		aliases:  map[string]model.Alias{},
 		events:   map[string]time.Time{},
 		windows:  map[string]*rateWindow{},
+		messages: map[string]model.InboxMessage{},
+		inbox:    map[string][]string{},
 		aliasTTL: aliasTTL,
 		eventTTL: eventTTL,
 		now:      time.Now,
@@ -177,4 +185,96 @@ func EncodeJSON(value any) ([]byte, error) {
 		return nil, fmt.Errorf("序列化失败: %w", err)
 	}
 	return data, nil
+}
+
+func inboxScope(userID, serverID int64) string {
+	return fmt.Sprintf("%d:%d", userID, serverID)
+}
+
+func (s *MemoryStore) PutInboxMessage(ctx context.Context, message model.InboxMessage) (model.InboxMessage, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.messageSeq++
+	message.Seq = s.messageSeq
+	if message.ID == "" {
+		message.ID = fmt.Sprintf("msg_%d_%d", message.UserID, message.Seq)
+	}
+	if message.CreatedAt.IsZero() {
+		message.CreatedAt = s.now()
+	}
+	s.messages[message.ID] = message
+	scope := inboxScope(message.UserID, message.ServerID)
+	ids := append(s.inbox[scope], message.ID)
+	if len(ids) > maxInboxMessagesPerUser {
+		drop := len(ids) - maxInboxMessagesPerUser
+		for _, id := range ids[:drop] {
+			delete(s.messages, id)
+		}
+		ids = ids[drop:]
+	}
+	s.inbox[scope] = ids
+	return message, nil
+}
+
+func (s *MemoryStore) ListInboxMessages(ctx context.Context, userID, serverID, afterSeq int64, limit int) ([]model.InboxMessage, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if limit <= 0 {
+		limit = 50
+	}
+	scope := inboxScope(userID, serverID)
+	ids := s.inbox[scope]
+	now := s.now()
+	alive := make([]string, 0, len(ids))
+	result := make([]model.InboxMessage, 0, limit)
+	for _, id := range ids {
+		message, ok := s.messages[id]
+		if !ok {
+			continue
+		}
+		if message.ExpiresAt != nil && !now.Before(*message.ExpiresAt) {
+			delete(s.messages, id)
+			continue
+		}
+		alive = append(alive, id)
+		if message.Seq <= afterSeq {
+			continue
+		}
+		result = append(result, message)
+	}
+	s.inbox[scope] = alive
+	if afterSeq == 0 && len(result) > limit {
+		result = result[len(result)-limit:]
+	} else if len(result) > limit {
+		result = result[:limit]
+	}
+	return result, nil
+}
+
+func (s *MemoryStore) AckInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	message, ok := s.messages[id]
+	if !ok || message.UserID != userID || message.ServerID != serverID {
+		return false, nil
+	}
+	stamp := at
+	message.AckedAt = &stamp
+	s.messages[id] = message
+	return true, nil
+}
+
+func (s *MemoryStore) DeleteInboxMessages(ctx context.Context, userID, serverID int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	scope := inboxScope(userID, serverID)
+	for _, id := range s.inbox[scope] {
+		delete(s.messages, id)
+	}
+	delete(s.inbox, scope)
+	return nil
 }

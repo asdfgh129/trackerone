@@ -1,13 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 收件箱本地状态：增量游标与已读标记。
+/// 收件箱本地状态：已读标记。
 ///
 /// 按 `serverId:userId` 隔离，切换账号或服务器时不会串消息。
+/// 消息正文与增量游标不落盘：冷启动重新拉取最新一页，
+/// 避免在本机长期保存调度内容。
 abstract interface class InboxStore {
-  Future<String?> readCursor(String scope);
-  Future<void> writeCursor(String scope, String cursor);
-
   Future<Set<String>> readReadIds(String scope);
   Future<void> writeReadIds(String scope, Set<String> ids);
 
@@ -23,20 +22,7 @@ class PrefsInboxStore implements InboxStore {
   /// 已读 id 最多保留 500 条，避免无限增长。
   static const int _maxReadIds = 500;
 
-  String _cursorKey(String scope) => '$_prefix.$scope.cursor';
   String _readKey(String scope) => '$_prefix.$scope.read';
-
-  @override
-  Future<String?> readCursor(String scope) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_cursorKey(scope));
-  }
-
-  @override
-  Future<void> writeCursor(String scope, String cursor) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_cursorKey(scope), cursor);
-  }
 
   @override
   Future<Set<String>> readReadIds(String scope) async {

@@ -68,7 +68,9 @@ class GatewayInboxApi implements InboxApi {
       );
       final body = response.data;
       final map =
-          body is Map ? body.cast<String, dynamic>() : const <String, dynamic>{};
+          body is Map
+              ? body.cast<String, dynamic>()
+              : const <String, dynamic>{};
       final raw = map['messages'];
       final messages =
           raw is List
@@ -81,9 +83,11 @@ class GatewayInboxApi implements InboxApi {
                   .where((message) => message.id.isNotEmpty)
                   .toList(growable: false)
               : const <InboxMessage>[];
+      final next = map['nextCursor']?.toString();
       return InboxPage(
         messages: messages,
-        nextCursor: map['nextCursor']?.toString(),
+        // 网关在「没有更多」时返回空串，统一当成 null，避免重置游标。
+        nextCursor: (next == null || next.isEmpty) ? null : next,
       );
     } on DioException catch (error) {
       throw _mapError(error);

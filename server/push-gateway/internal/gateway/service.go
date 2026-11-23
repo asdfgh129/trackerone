@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/trackerone/push-gateway/internal/auth"
@@ -21,6 +23,16 @@ import (
 // ErrUnauthorized 表示鉴权失败。
 var ErrUnauthorized = errors.New("鉴权失败")
 
+// ErrNotFound 表示消息不存在或不属于当前用户。
+var ErrNotFound = errors.New("消息不存在")
+
+// InboxKinds 是可下发的消息类型。
+var InboxKinds = map[string]bool{
+	"command": true,
+	"notice":  true,
+	"chat":    true,
+}
+
 // Service 是网关的核心业务对象。
 type Service struct {
 	cfg      *config.Config
@@ -32,6 +44,7 @@ type Service struct {
 
 	// serverIDCache 缓存 Traccar 服务端 id，避免每次注册都请求一次。
 	serverIDCache map[string]int64
+	serverIDMu    sync.Mutex
 }
 
 // New 创建业务服务。
@@ -429,6 +442,8 @@ func (s *Service) traccarServerID(ctx context.Context, token string) (int64, err
 	if s.cfg.TraccarServerID > 0 {
 		return s.cfg.TraccarServerID, nil
 	}
+	s.serverIDMu.Lock()
+	defer s.serverIDMu.Unlock()
 	if cached, ok := s.serverIDCache[token]; ok {
 		return cached, nil
 	}
@@ -469,5 +484,169 @@ func toInt64(value any) int64 {
 		return int64(typed)
 	default:
 		return 0
+	}
+}
+
+// Authenticate 用 Traccar Token 换取用户与服务端 id。
+//
+// 网关不接受客户端自报身份，避免越权读取他人收件箱。
+func (s *Service) Authenticate(ctx context.Context, token string) (int64, int64, error) {
+	if strings.TrimSpace(token) == "" {
+		return 0, 0, fmt.Errorf("%w: 缺少 Token", ErrUnauthorized)
+	}
+	if !s.traccar.Enabled() {
+		return 0, 0, fmt.Errorf("%w: TRACCAR_BASE_URL 未配置，无法校验 Token", ErrUnauthorized)
+	}
+	user, err := s.traccar.Session(ctx, token)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%w: %s", ErrUnauthorized, err)
+	}
+	serverID, err := s.traccarServerID(ctx, token)
+	if err != nil {
+		return 0, 0, fmt.Errorf("%w: %s", ErrUnauthorized, err)
+	}
+	return user.ID, serverID, nil
+}
+
+// ListMessages 返回增量收件箱消息，游标为最后一条消息的序号。
+func (s *Service) ListMessages(ctx context.Context, token, since string, limit int) ([]model.InboxMessage, string, error) {
+	userID, serverID, err := s.Authenticate(ctx, token)
+	if err != nil {
+		return nil, "", err
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	var afterSeq int64
+	if value := strings.TrimSpace(since); value != "" {
+		afterSeq, err = strconv.ParseInt(value, 10, 64)
+		if err != nil || afterSeq < 0 {
+			return nil, "", fmt.Errorf("since 游标非法: %q", value)
+		}
+	}
+	messages, err := s.store.ListInboxMessages(ctx, userID, serverID, afterSeq, limit)
+	if err != nil {
+		return nil, "", fmt.Errorf("读取消息失败: %w", err)
+	}
+	if messages == nil {
+		messages = []model.InboxMessage{}
+	}
+	cursor := ""
+	if len(messages) > 0 {
+		cursor = strconv.FormatInt(messages[len(messages)-1].Seq, 10)
+	}
+	return messages, cursor, nil
+}
+
+// AckMessage 记录一条消息的投递回执（幂等）。
+func (s *Service) AckMessage(ctx context.Context, token, id string) error {
+	if strings.TrimSpace(id) == "" {
+		return fmt.Errorf("缺少消息 id")
+	}
+	userID, serverID, err := s.Authenticate(ctx, token)
+	if err != nil {
+		return err
+	}
+	ok, err := s.store.AckInboxMessage(ctx, userID, serverID, id, time.Now())
+	if err != nil {
+		return fmt.Errorf("保存回执失败: %w", err)
+	}
+	if !ok {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SendMessage 写入收件箱并推送一条不含正文的壳通知。
+//
+// 返回的 pushStatus 为 sent / no_alias / failed；即使推送失败，
+// 消息已入库，App 下次同步仍能拉到。
+func (s *Service) SendMessage(ctx context.Context, request model.InboxSendRequest) (model.InboxMessage, string, error) {
+	kind := strings.TrimSpace(request.Kind)
+	if kind == "" {
+		kind = "notice"
+	}
+	if !InboxKinds[kind] {
+		return model.InboxMessage{}, "", fmt.Errorf("kind 只支持 command / notice / chat")
+	}
+	if request.UserID <= 0 {
+		return model.InboxMessage{}, "", fmt.Errorf("userId 必须为正整数")
+	}
+	if strings.TrimSpace(request.Title) == "" && strings.TrimSpace(request.Body) == "" {
+		return model.InboxMessage{}, "", fmt.Errorf("title 与 body 不能同时为空")
+	}
+	serverID := request.ServerID
+	if serverID <= 0 {
+		serverID = s.cfg.TraccarServerID
+	}
+	if serverID <= 0 {
+		serverID = 1
+	}
+
+	now := time.Now()
+	expires := now.Add(defaultInboxTTL(kind))
+	if request.ExpiresIn > 0 {
+		expires = now.Add(time.Duration(request.ExpiresIn) * time.Second)
+	}
+	message, err := s.store.PutInboxMessage(ctx, model.InboxMessage{
+		UserID:    request.UserID,
+		ServerID:  serverID,
+		Kind:      kind,
+		Title:     strings.TrimSpace(request.Title),
+		Body:      strings.TrimSpace(request.Body),
+		Data:      request.Data,
+		CreatedAt: now,
+		ExpiresAt: &expires,
+	})
+	if err != nil {
+		return model.InboxMessage{}, "", fmt.Errorf("保存消息失败: %w", err)
+	}
+
+	alias := auth.AliasFor(request.UserID, serverID)
+	record, found, err := s.store.GetAlias(ctx, alias)
+	if err != nil {
+		s.log.Error("查询别名失败", "alias", alias, "error", err)
+		return message, "failed", nil
+	}
+	if !found {
+		s.log.Info("message stored without alias", "alias", alias, "messageId", message.ID)
+		return message, "no_alias", nil
+	}
+
+	// 壳通知只带 inboxId，正文由 App 拉取，避免通知栏泄露敏感内容。
+	_, pushErr := s.deliverRaw(
+		ctx,
+		record,
+		"新消息",
+		"你有一条新的消息",
+		map[string]any{"inboxId": message.ID},
+	)
+	if pushErr != nil {
+		s.log.Error("message push failed", "alias", alias, "messageId", message.ID, "error", pushErr)
+		return message, "failed", nil
+	}
+	s.log.Info("message pushed", "alias", alias, "messageId", message.ID, "kind", kind)
+	return message, "sent", nil
+}
+
+// DeleteMessages 清除某用户在某服务器上的全部消息（注销 / 清除数据）。
+func (s *Service) DeleteMessages(ctx context.Context, userID, serverID int64) error {
+	if userID <= 0 || serverID <= 0 {
+		return fmt.Errorf("userId / serverId 必须为正整数")
+	}
+	return s.store.DeleteInboxMessages(ctx, userID, serverID)
+}
+
+func defaultInboxTTL(kind string) time.Duration {
+	switch kind {
+	case "command":
+		return time.Hour
+	case "chat":
+		return 72 * time.Hour
+	default:
+		return 7 * 24 * time.Hour
 	}
 }

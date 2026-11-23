@@ -128,9 +128,9 @@ Authorization: Bearer <token>
 
 本地状态：
 
-- 游标与已读 id 按 `serverId:userId` 隔离（`PrefsInboxStore`）；
-- 已读 id 最多保留 500 条，超出丢弃最旧；
-- 不缓存消息正文到磁盘，进程重启后由服务端重新下发（受 TTL 约束）。
+- 已读 id 按 `serverId:userId` 隔离持久化（`PrefsInboxStore`），最多保留 500 条；
+- 游标只保存在内存：冷启动重新拉取最新一页，避免消息正文与增量位置长期落盘；
+- 不缓存消息正文；进程重启后由服务端按 TTL 重新下发，已读状态仍能恢复。
 
 ## 6. 安全与合规
 
@@ -159,9 +159,11 @@ Authorization: Bearer <token>
   指令执行与本地化已完成；`flutter test` 覆盖解析、去重、ACK、已读与失败容忍。
 - 联调：`--dart-define=INBOX_DEMO=true` 使用 `DemoInboxApi` 假数据，
   可在没有网关时走通完整交互。
-- 待办（网关侧，`server/push-gateway/`）：
-  1. `messages` 存储（建议 Redis/PostgreSQL）与 TTL 清理；
-  2. `GET /v1/messages`、`POST /v1/messages/{id}/ack`、发件接口；
-  3. 写入后按 alias 推送壳通知，失败重试与死信；
-  4. Traccar webhook / 管理后台触发指令下发；
-  5. 审计与限流（每用户未读数上限、发送频率）。
+- 网关侧（`server/push-gateway/`，2026-11-23 已实现）：
+  1. ✅ Redis / 内存存储、序号游标、TTL 与每用户 1000 条上限；
+  2. ✅ `GET /v1/messages`、`POST /v1/messages/{id}/ack`、
+     `POST /v1/messages`（管理员下发）、`DELETE /v1/messages`（注销清理）；
+  3. ✅ 入库后按 alias 推送壳通知，失败写入死信；
+  4. ✅ 用 Traccar Token 校验用户归属，禁止越权读取；
+  5. ⏳ 待接：Traccar webhook / 管理后台的指令下发入口与审计查询；
+  6. ⏳ 待做：真机联调（需部署网关并配置 `PUSH_GATEWAY_URL`）。

@@ -175,6 +175,79 @@ Authorization: Basic base64(appKey:masterSecret)
 > 厂商通道离线消息必须把业务字段放在 `extras`，App 侧统一从 `extras` 解析
 > `eventId` / `command`。
 
+### 2.4 服务端下发消息（收件箱）
+
+App 侧实现见 `docs/17-adr-downlink.md`。网关负责持久化、增量游标与投递回执，
+推送只发「壳通知」（`extras.inboxId`），正文由 App 拉取。
+
+**下发（管理员）**
+
+```http
+POST /v1/messages
+Authorization: Bearer <ADMIN_TOKEN>
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "kind": "command",
+  "title": "指令：断油",
+  "body": "调度要求对京A·12345 断油",
+  "data": { "deviceId": 42, "command": "engineStop" },
+  "expiresIn": 3600
+}
+```
+
+- `kind`：`command` / `notice` / `chat`；缺省 `notice`；
+- `expiresIn` 为秒，缺省 command 1h、chat 72h、notice 7d；
+- 返回 `201`：`{"message": {...}, "push": "sent|no_alias|failed"}`；
+- 推送失败不影响入库，App 下次同步仍能拉到。
+
+**拉取（App）**
+
+```http
+GET /v1/messages?since=<游标>&limit=50
+Authorization: Bearer <app-session-token>
+```
+
+```json
+{
+  "messages": [
+    {
+      "id": "msg_1_12",
+      "kind": "command",
+      "title": "指令：断油",
+      "body": "调度要求对京A·12345 断油",
+      "data": { "deviceId": 42, "command": "engineStop" },
+      "createdAt": "2026-11-20T10:00:00Z",
+      "expiresAt": "2026-11-20T11:00:00Z"
+    }
+  ],
+  "nextCursor": "12"
+}
+```
+
+- 网关用 Traccar Token 换用户与 serverId，按用户隔离，禁止越权；
+- 游标为内部递增序号，客户端只需原样回传 `nextCursor`；
+- 首次不带 `since` 返回最新一页（升序），后续只返回游标之后的消息；
+- `limit` 上限 100，缺省 50。
+
+**投递回执**
+
+```http
+POST /v1/messages/{id}/ack
+Authorization: Bearer <app-session-token>
+```
+
+- 幂等；返回 `204`；消息不属于当前用户或不存在返回 `404`；
+- ACK 表示「已收到」，不等于已读；已读仅存在 App 本地。
+
+**清空（管理员，注销 / 清除数据）**
+
+```http
+DELETE /v1/messages?userId=1&serverId=1
+Authorization: Bearer <ADMIN_TOKEN>
+```
+
 ## 3. 网关最小实现建议
 
 > ✅ **已实现**：`server/push-gateway/`（Go，单二进制 + Redis，Docker 可直接部署）。

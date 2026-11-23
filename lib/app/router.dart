@@ -14,6 +14,7 @@ import '../features/diagnostics/presentation/diagnostics_screen.dart';
 import '../features/events/presentation/event_detail_screen.dart';
 import '../features/events/presentation/events_screen.dart';
 import '../features/history/presentation/history_screen.dart';
+import '../features/inbox/application/inbox_controller.dart';
 import '../features/inbox/presentation/inbox_screen.dart';
 import '../features/map/presentation/map_screen.dart';
 import '../features/onboarding/presentation/permissions_screen.dart';
@@ -43,8 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       final server = profiles.valueOrNull?.active;
-      final authenticated =
-          session.valueOrNull?.isAuthenticated ?? false;
+      final authenticated = session.valueOrNull?.isAuthenticated ?? false;
 
       if (server == null) {
         return location == '/server' ? null : '/server';
@@ -74,13 +74,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => LoginScreen(
-          from: state.uri.queryParameters['from'],
-        ),
+        builder:
+            (context, state) =>
+                LoginScreen(from: state.uri.queryParameters['from']),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) =>
-            AppShell(navigationShell: navigationShell),
+        builder:
+            (context, state, navigationShell) =>
+                AppShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -126,26 +127,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/device/:id',
-        builder: (context, state) => DeviceDetailScreen(
-          deviceId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
+        builder:
+            (context, state) => DeviceDetailScreen(
+              deviceId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
       ),
       GoRoute(
         path: '/device/:id/history',
-        builder: (context, state) => HistoryScreen(
-          deviceId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
+        builder:
+            (context, state) => HistoryScreen(
+              deviceId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
       ),
       GoRoute(
         path: '/event/:id',
-        builder: (context, state) => EventDetailScreen(
-          eventId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
+        builder:
+            (context, state) => EventDetailScreen(
+              eventId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
       ),
-      GoRoute(
-        path: '/inbox',
-        builder: (context, state) => const InboxScreen(),
-      ),
+      GoRoute(path: '/inbox', builder: (context, state) => const InboxScreen()),
       GoRoute(
         path: '/diagnostics',
         builder: (context, state) => const DiagnosticsScreen(),
@@ -204,19 +205,21 @@ final routerProvider = Provider<GoRouter>((ref) {
   }
 
   final pushSubscription = push.messages.listen((message) {
+    final inboxId = message.data['inboxId']?.toString() ?? '';
+    if (inboxId.isNotEmpty && !message.opened) {
+      // 前台收到新消息：只刷新列表与角标，不打断当前页面。
+      unawaited(ref.read(inboxProvider.notifier).sync());
+      return;
+    }
     // 前台展示不打断当前页面；只有点击通知或远程指令才处理。
     if (message.opened || message.isCommand) handlePush(message);
   });
   ref.onDispose(() => unawaited(pushSubscription.cancel()));
 
   // 推送 SDK 初始化完成后再读取冷启动通知，否则会拿到空值。
-  ref.listen(
-    pushRegistrationProvider,
-    (_, next) {
-      if (next is AsyncData) unawaited(consumeInitialMessage());
-    },
-    fireImmediately: true,
-  );
+  ref.listen(pushRegistrationProvider, (_, next) {
+    if (next is AsyncData) unawaited(consumeInitialMessage());
+  }, fireImmediately: true);
 
   ref.listen(sessionProvider, (_, next) {
     router.refresh();

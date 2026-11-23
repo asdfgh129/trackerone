@@ -33,6 +33,16 @@ type Store interface {
 	// TakeDeferred 取出到期的延后事件，最多 limit 条。
 	TakeDeferred(ctx context.Context, now time.Time, limit int) ([]model.Deferred, error)
 
+	// PutInboxMessage 保存一条收件箱消息，分配序号与 id。
+	PutInboxMessage(ctx context.Context, message model.InboxMessage) (model.InboxMessage, error)
+	// ListInboxMessages 返回序号大于 afterSeq 的消息（按序号升序），最多 limit 条。
+	// afterSeq 为 0 时返回最新一页。
+	ListInboxMessages(ctx context.Context, userID, serverID, afterSeq int64, limit int) ([]model.InboxMessage, error)
+	// AckInboxMessage 记录投递回执；消息不属于该用户时返回 false。
+	AckInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (bool, error)
+	// DeleteInboxMessages 删除某用户在某服务器上的全部消息（注销 / 清除数据）。
+	DeleteInboxMessages(ctx context.Context, userID, serverID int64) error
+
 	// PutDeadLetter 记录投递失败的死信。
 	PutDeadLetter(ctx context.Context, item model.DeadLetter) error
 	// ListDeadLetters 列出死信。

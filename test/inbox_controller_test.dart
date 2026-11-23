@@ -73,21 +73,17 @@ void main() {
           ),
         ],
       );
-      final store =
-          _FakeInboxStore()
-            ..cursor = 'c0'
-            ..readIds = {'b'};
+      final store = _FakeInboxStore()..readIds = {'b'};
       final container = createContainer(api: api, store: store);
 
       final state = await container.read(inboxProvider.future);
 
-      expect(api.requestedCursors, ['c0']);
+      expect(api.requestedCursors, [null]);
       expect(api.acked, ['a', 'b']);
       expect(state.messages.map((m) => m.id), ['a', 'b']);
       expect(state.unread, 1);
       expect(state.isUnread(message('a')), isTrue);
       expect(state.isUnread(message('b')), isFalse);
-      expect(store.cursor, 'c1');
       expect(state.error, isNull);
       expect(state.gatewayMissing, isFalse);
       expect(container.read(inboxUnreadProvider), 1);
@@ -129,16 +125,12 @@ void main() {
           messageKey: 'errorNetwork',
         ),
       );
-      final store =
-          _FakeInboxStore()
-            ..cursor = 'c0'
-            ..readIds = {'a'};
+      final store = _FakeInboxStore()..readIds = {'a'};
       final container = createContainer(api: api, store: store);
 
       final state = await container.read(inboxProvider.future);
 
       expect(state.messages, isEmpty);
-      expect(state.cursor, 'c0');
       expect(state.readIds, {'a'});
       expect(state.error, isNotNull);
       expect(state.error, contains('Cannot reach the server'));
@@ -209,7 +201,6 @@ void main() {
 
       expect(state.messages, hasLength(1));
       expect(state.error, isNull);
-      expect(store.cursor, 'c1');
     });
 
     test('keeps existing messages and surfaces the error', () async {
@@ -322,16 +313,7 @@ class _FakeInboxApi implements InboxApi {
 }
 
 class _FakeInboxStore implements InboxStore {
-  String? cursor;
   Set<String> readIds = {};
-
-  @override
-  Future<String?> readCursor(String scope) async => cursor;
-
-  @override
-  Future<void> writeCursor(String scope, String value) async {
-    cursor = value;
-  }
 
   @override
   Future<Set<String>> readReadIds(String scope) async => {...readIds};
@@ -343,7 +325,6 @@ class _FakeInboxStore implements InboxStore {
 
   @override
   Future<void> clearAll() async {
-    cursor = null;
     readIds = {};
   }
 }
