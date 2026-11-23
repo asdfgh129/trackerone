@@ -149,7 +149,7 @@ flutter build ios --simulator --no-codesign
 
 ## 9. 发布前最后检查
 
-- [ ] 关闭调试入口与 `SIMULATE_DEVICES`；
+- [ ] 关闭调试入口与 `SIMULATE_DEVICES`，并确认正式包未带 `INBOX_DEMO=true`；
 - [x] 确认 `PUSH_PROVIDER` / `MAP_PROVIDER` 为生产值（默认 `jpush` / `amap`）；
 - [ ] 正式包必须带 `--dart-define=PUSH_GATEWAY_URL=<网关域名>`，否则网关丢弃全部事件、
       消息中心只显示「未配置消息网关」
