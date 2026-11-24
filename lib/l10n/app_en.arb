@@ -585,5 +585,19 @@
       }
     }
   },
-  "inboxExpired": "Expired"
+  "inboxExpired": "Expired",
+  "inboxViewDevice": "View device",
+  "inboxCommandPendingTitle": "Waiting for the device…",
+  "inboxCommandPendingBody": "Command sent to device #{deviceId}. The result will appear here.",
+  "inboxCommandResultTitle": "Command result",
+  "inboxCommandResultSuccess": "Succeeded",
+  "inboxCommandResultFailure": "Failed",
+  "inboxCommandResultUnknown": "Result received",
+  "@inboxCommandPendingBody": {
+    "placeholders": {
+      "deviceId": {
+        "type": "int"
+      }
+    }
+  }
 }

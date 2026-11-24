@@ -237,6 +237,8 @@ tail -f /opt/traccar/logs/traccar.log | grep -i webhook
 | Traccar webhook 通知器 | ✅ 补丁已写好，待打到你服务器 |
 | 客户端 → 网关别名同步 | ✅ 代码完成（需构建时带 `PUSH_GATEWAY_URL`） |
 | 收件箱 API（下行消息） | ✅ 代码完成（`GET/POST /v1/messages`、ACK、注销清理），待部署后自检 |
+| 指令结果入收件箱 | ✅ 代码完成（插件直传 + `/v1/events` 兜底），待真机验证 |
+| 撤回 / 重发 / 审计 | ✅ 代码完成（`revoke`、`resend`、`/v1/messages/audit`），待部署后自检 |
 | 真机锁屏/冷启动验证 | ⛔ 待真机 |
 
 ---
@@ -265,7 +267,22 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST \
 # 4) 注销清理
 curl -sS -X DELETE "https://push.example.com/v1/messages?userId=1&serverId=1" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 5) 审计：看来源、推送状态、ACK 与撤回
+curl -sS "https://push.example.com/v1/messages/audit?userId=1&serverId=1&limit=20" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 6) 撤回 / 重发
+curl -sS -X POST "https://push.example.com/v1/messages/<消息id>/revoke?userId=1&serverId=1" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+curl -sS -X POST "https://push.example.com/v1/messages/<消息id>/resend?userId=1&serverId=1" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
+
+指令结果链路自检：在 Traccar 对设备发送一条指令（例如单次定位），
+设备返回后应收到 `commandResult` 通知；进入「设置 → 消息中心」看到
+「指令结果」卡片（成功/失败标签 + 查看设备），审计接口 `source=traccar`、
+`data.eventType=commandResult`。
 
 预期：
 

@@ -57,6 +57,32 @@ class InboxMessage {
 
   int? get deviceId => _asInt(data['deviceId']);
 
+  /// 事件类型，例如 `commandResult`、`commandPending`。
+  String? get eventType => _asString(data['eventType']);
+
+  /// Traccar 指令执行结果。
+  bool get isCommandResult => eventType == 'commandResult';
+
+  /// App 本地生成的「等待设备返回结果」占位消息。
+  bool get isCommandPending => eventType == 'commandPending';
+
+  /// 指令执行结果文本；兼容网关字段 `response`。
+  String? get commandResult =>
+      _asString(data['result']) ?? _asString(data['response']);
+
+  /// 指令是否执行成功；未知时返回 null。
+  bool? get commandSucceeded {
+    final value = data['success'];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().toLowerCase();
+    if (text == 'true' || text == '1') return true;
+    if (text == 'false' || text == '0') return false;
+    return null;
+  }
+
+  int? get eventId => _asInt(data['eventId']);
+
   /// 指令类型（Traccar `type`），例如 `engineStop`。
   String? get command => _asString(data['command']);
 

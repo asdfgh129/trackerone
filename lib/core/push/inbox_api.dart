@@ -198,6 +198,17 @@ class DemoInboxApi implements InboxApi {
       createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
     ),
     InboxMessage(
+      id: 'demo-result-1',
+      kind: InboxKind.notice,
+      data: const {
+        'eventType': 'commandResult',
+        'deviceId': 1,
+        'result': 'success',
+        'success': true,
+      },
+      createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
+    ),
+    InboxMessage(
       id: 'demo-chat-1',
       kind: InboxKind.chat,
       title: '调度员',

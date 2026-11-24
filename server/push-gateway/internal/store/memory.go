@@ -227,30 +227,63 @@ func (s *MemoryStore) ListInboxMessages(ctx context.Context, userID, serverID, a
 	scope := inboxScope(userID, serverID)
 	ids := s.inbox[scope]
 	now := s.now()
-	alive := make([]string, 0, len(ids))
 	result := make([]model.InboxMessage, 0, limit)
 	for _, id := range ids {
 		message, ok := s.messages[id]
 		if !ok {
 			continue
 		}
-		if message.ExpiresAt != nil && !now.Before(*message.ExpiresAt) {
-			delete(s.messages, id)
+		// 已撤回或已过期的消息不再下发给 App，但保留在索引里供审计。
+		if message.RevokedAt != nil {
 			continue
 		}
-		alive = append(alive, id)
+		if message.ExpiresAt != nil && !now.Before(*message.ExpiresAt) {
+			continue
+		}
 		if message.Seq <= afterSeq {
 			continue
 		}
 		result = append(result, message)
 	}
-	s.inbox[scope] = alive
 	if afterSeq == 0 && len(result) > limit {
 		result = result[len(result)-limit:]
 	} else if len(result) > limit {
 		result = result[:limit]
 	}
 	return result, nil
+}
+
+func (s *MemoryStore) ListInboxAudit(ctx context.Context, userID, serverID, beforeSeq int64, limit int) ([]model.InboxMessage, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if limit <= 0 {
+		limit = 50
+	}
+	ids := s.inbox[inboxScope(userID, serverID)]
+	result := make([]model.InboxMessage, 0, limit)
+	for i := len(ids) - 1; i >= 0 && len(result) < limit; i-- {
+		message, ok := s.messages[ids[i]]
+		if !ok {
+			continue
+		}
+		if beforeSeq > 0 && message.Seq >= beforeSeq {
+			continue
+		}
+		result = append(result, message)
+	}
+	return result, nil
+}
+
+func (s *MemoryStore) GetInboxMessage(ctx context.Context, userID, serverID int64, id string) (model.InboxMessage, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	message, ok := s.messages[id]
+	if !ok || message.UserID != userID || message.ServerID != serverID {
+		return model.InboxMessage{}, false, nil
+	}
+	return message, true, nil
 }
 
 func (s *MemoryStore) AckInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (bool, error) {
@@ -265,6 +298,38 @@ func (s *MemoryStore) AckInboxMessage(ctx context.Context, userID, serverID int6
 	message.AckedAt = &stamp
 	s.messages[id] = message
 	return true, nil
+}
+
+func (s *MemoryStore) RevokeInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (model.InboxMessage, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	message, ok := s.messages[id]
+	if !ok || message.UserID != userID || message.ServerID != serverID {
+		return model.InboxMessage{}, false, nil
+	}
+	stamp := at
+	message.RevokedAt = &stamp
+	s.messages[id] = message
+	return message, true, nil
+}
+
+func (s *MemoryStore) UpdateInboxPush(ctx context.Context, userID, serverID int64, id, status string, attempts int, at time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	message, ok := s.messages[id]
+	if !ok || message.UserID != userID || message.ServerID != serverID {
+		return nil
+	}
+	stamp := at
+	message.PushStatus = status
+	message.PushAttempts = attempts
+	if status == "sent" {
+		message.PushedAt = &stamp
+	}
+	s.messages[id] = message
+	return nil
 }
 
 func (s *MemoryStore) DeleteInboxMessages(ctx context.Context, userID, serverID int64) error {

@@ -1,8 +1,9 @@
 # 17 · ADR-016 服务端下行消息：推送唤醒 + REST 收件箱
 
-> 状态：已接受（2026-11-19）
+> 状态：已接受（2026-11-19，2026-11-24 增补指令结果与运营接口）
 > 关联：`docs/08-decisions-risks.md` ADR-016、`docs/12-push-integration.md`
-> 实现：App 侧已完成（`lib/features/inbox/`、`lib/core/push/inbox_*`）；网关侧待实现。
+> 实现：App 侧与网关侧均已完成（`lib/features/inbox/`、`lib/core/push/inbox_*`、
+> `server/push-gateway/`）；仅剩部署后真机联调。
 
 ## 1. 背景
 
@@ -100,7 +101,74 @@ Authorization: Bearer <token>
 - ACK 表示「客户端已收到并持久化展示过」，**不等于已读**；
 - ACK 失败时 App 忽略错误，靠下次重发 + 本地 id 去重兜底。
 
-### 4.3 推送壳
+### 4.3 管理端下发与运营
+
+```http
+POST /v1/messages
+Authorization: Bearer <ADMIN_TOKEN>
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "kind": "command",
+  "title": "指令：断油",
+  "body": "调度要求对京A·12345 断油",
+  "data": { "deviceId": 42, "command": "engineStop" },
+  "expiresIn": 3600
+}
+```
+
+- Traccar 也可直接调用该接口：不带 `Authorization`，改用与 `/v1/events`
+  相同的 `X-Traccar-Signature: sha256=<hmac>`，此时 `source` 记为 `traccar`；
+- 响应 `201`：`{"message": {...}, "push": "sent|no_alias|failed"}`；
+- 推送失败不影响入库，App 下次同步仍能拉到。
+
+**撤回 / 重发 / 审计（管理员）**
+
+```http
+POST   /v1/messages/{id}/revoke?userId=1&serverId=1
+POST   /v1/messages/{id}/resend?userId=1&serverId=1
+GET    /v1/messages/audit?userId=1&serverId=1&cursor=&limit=50
+```
+
+- 撤回是软删除：App 不再拉取，审计仍保留 `revokedAt`；
+- 重发只重推壳通知，不新增消息；已撤回或已过期不可重发；
+- 审计按序号倒序返回，包含 `source`、`pushStatus`、`pushAttempts`、
+  `pushedAt`、`ackedAt`、`revokedAt`，用于排查「发给谁、推到没有、手机收没收到」；
+- 审计游标 `nextCursor` 为当前页最后一条的序号，空串表示没有更多。
+
+### 4.4 指令结果
+
+Traccar 的 `commandResult` 事件有两个入口，效果一致：
+
+1. **推荐**：`NotificatorWebhook` 按 `notificator.webhook.inboxTypes`
+   （默认 `commandResult`）把事件转成 `POST /v1/messages`，用 webhook secret 签名；
+2. 兜底：旧插件仍把事件发到 `POST /v1/events`，网关自动转成收件箱消息。
+
+消息形态：
+
+```json
+{
+  "id": "msg_1_13",
+  "kind": "notice",
+  "body": "success",
+  "data": {
+    "eventType": "commandResult",
+    "eventId": 9001,
+    "deviceId": 42,
+    "result": "success",
+    "success": true
+  },
+  "createdAt": "2026-11-24T10:00:00Z",
+  "expiresAt": "2026-12-01T10:00:00Z"
+}
+```
+
+App 端在消息中心用本地化标题「指令结果」展示，并按 `success` 显示成功/失败标签；
+点击「查看设备」进入设备详情。用户执行收件箱里的指令后，App 会插入一条
+本地「等待设备返回结果」占位消息，收到同一设备的 `commandResult` 后自动替换。
+
+### 4.5 推送壳
 
 ```json
 {
@@ -125,6 +193,8 @@ Authorization: Bearer <token>
 | 未知指令 | 提示「App 暂不支持该指令类型」，不发送 |
 | 破坏性指令 | 二次确认（断油/重启/恢复出厂） |
 | 本地清理 | 退出登录、删除服务器、清除数据时清空已读 id |
+| 指令结果 | 展示本地化标题、成功/失败标签与「查看设备」 |
+| 执行后等待结果 | 插入本地占位消息，不计未读；收到同设备结果或 15 分钟后移除 |
 
 本地状态：
 
@@ -156,14 +226,17 @@ Authorization: Bearer <token>
 ## 8. 现状与后续
 
 - App 侧：实体、API、存储、控制器、页面、路由、设置入口、未读角标、
-  指令执行与本地化已完成；`flutter test` 覆盖解析、去重、ACK、已读与失败容忍。
+  指令执行、指令结果展示与本地化已完成；`flutter test` 覆盖解析、去重、ACK、
+  已读、失败容忍与「执行 → 等待结果 → 结果替换」。
 - 联调：`--dart-define=INBOX_DEMO=true` 使用 `DemoInboxApi` 假数据，
   可在没有网关时走通完整交互。
-- 网关侧（`server/push-gateway/`，2026-11-23 已实现）：
+- 网关侧（`server/push-gateway/`，2026-11-23 起）：
   1. ✅ Redis / 内存存储、序号游标、TTL 与每用户 1000 条上限；
   2. ✅ `GET /v1/messages`、`POST /v1/messages/{id}/ack`、
-     `POST /v1/messages`（管理员下发）、`DELETE /v1/messages`（注销清理）；
-  3. ✅ 入库后按 alias 推送壳通知，失败写入死信；
+     `POST /v1/messages`（管理员或 Traccar HMAC）、`DELETE /v1/messages`（注销清理）；
+  3. ✅ 入库后按 alias 推送壳通知，失败写入死信；推送状态入库供审计；
   4. ✅ 用 Traccar Token 校验用户归属，禁止越权读取；
-  5. ⏳ 待接：Traccar webhook / 管理后台的指令下发入口与审计查询；
-  6. ⏳ 待做：真机联调（需部署网关并配置 `PUSH_GATEWAY_URL`）。
+  5. ✅ `POST /v1/messages/{id}/revoke`、`POST /v1/messages/{id}/resend`、
+     `GET /v1/messages/audit`（管理员分页与投递/回执状态）；
+  6. ✅ Traccar `commandResult` 事件写收件箱（插件直传 + 旧插件事件兜底）；
+  7. ⏳ 待做：部署网关并完成真机联调（配置 `PUSH_GATEWAY_URL`）。

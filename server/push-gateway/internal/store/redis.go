@@ -25,6 +25,9 @@ const (
 	keyInboxIndex  = "push:inbox:index:"
 )
 
+// inboxRetention 是消息对 App 过期后仍保留的最短时间（供管理端审计）。
+const inboxRetention = 7 * 24 * time.Hour
+
 // RedisStore 是生产实现。
 type RedisStore struct {
 	client   *redis.Client
@@ -217,11 +220,11 @@ func (s *RedisStore) PutInboxMessage(ctx context.Context, message model.InboxMes
 	if message.CreatedAt.IsZero() {
 		message.CreatedAt = time.Now()
 	}
-	ttl := 7 * 24 * time.Hour
+	ttl := inboxRetention
 	if message.ExpiresAt != nil {
-		ttl = time.Until(*message.ExpiresAt)
-		if ttl <= 0 {
-			ttl = time.Minute
+		// 消息对 App 过期后仍保留一段时间，供管理端审计投递与回执。
+		if retention := time.Until(*message.ExpiresAt) + time.Hour; retention > ttl {
+			ttl = retention
 		}
 	}
 	payload, err := json.Marshal(message)
@@ -280,8 +283,7 @@ func (s *RedisStore) ListInboxMessages(ctx context.Context, userID, serverID, af
 	}
 	now := time.Now()
 	result := make([]model.InboxMessage, 0, len(values))
-	expired := make([]any, 0)
-	for i, value := range values {
+	for _, value := range values {
 		raw, ok := value.(string)
 		if !ok {
 			continue
@@ -290,48 +292,141 @@ func (s *RedisStore) ListInboxMessages(ctx context.Context, userID, serverID, af
 		if err := json.Unmarshal([]byte(raw), &message); err != nil {
 			continue
 		}
+		if message.RevokedAt != nil {
+			continue
+		}
 		if message.ExpiresAt != nil && !now.Before(*message.ExpiresAt) {
-			expired = append(expired, ids[i])
 			continue
 		}
 		result = append(result, message)
 	}
-	if len(expired) > 0 {
-		// 清理已过期条目的索引，避免游标空洞。
-		_ = s.client.ZRem(ctx, index, expired...).Err()
-	}
 	return result, nil
 }
 
-func (s *RedisStore) AckInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (bool, error) {
-	key := inboxItemKey(id)
-	payload, err := s.client.Get(ctx, key).Bytes()
-	if errors.Is(err, redis.Nil) {
-		return false, nil
+func (s *RedisStore) ListInboxAudit(ctx context.Context, userID, serverID, beforeSeq int64, limit int) ([]model.InboxMessage, error) {
+	if limit <= 0 {
+		limit = 50
 	}
+	index := inboxIndexKey(userID, serverID)
+	max := "+inf"
+	if beforeSeq > 0 {
+		max = "(" + strconv.FormatInt(beforeSeq, 10)
+	}
+	ids, err := s.client.ZRevRangeByScore(ctx, index, &redis.ZRangeBy{
+		Min:    "-inf",
+		Max:    max,
+		Offset: 0,
+		Count:  int64(limit),
+	}).Result()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	var message model.InboxMessage
-	if err := json.Unmarshal(payload, &message); err != nil {
-		return false, nil
+	items, err := s.loadInboxItems(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (s *RedisStore) GetInboxMessage(ctx context.Context, userID, serverID int64, id string) (model.InboxMessage, bool, error) {
+	message, ok, err := s.loadInboxItem(ctx, id)
+	if err != nil || !ok {
+		return model.InboxMessage{}, false, err
 	}
 	if message.UserID != userID || message.ServerID != serverID {
-		return false, nil
+		return model.InboxMessage{}, false, nil
+	}
+	return message, true, nil
+}
+
+func (s *RedisStore) AckInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (bool, error) {
+	message, ok, err := s.GetInboxMessage(ctx, userID, serverID, id)
+	if err != nil || !ok {
+		return false, err
 	}
 	if message.ExpiresAt != nil && !time.Now().Before(*message.ExpiresAt) {
 		return false, nil
 	}
 	stamp := at
 	message.AckedAt = &stamp
+	return true, s.saveInboxMessage(ctx, message)
+}
+
+func (s *RedisStore) RevokeInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (model.InboxMessage, bool, error) {
+	message, ok, err := s.GetInboxMessage(ctx, userID, serverID, id)
+	if err != nil || !ok {
+		return model.InboxMessage{}, false, err
+	}
+	stamp := at
+	message.RevokedAt = &stamp
+	if err := s.saveInboxMessage(ctx, message); err != nil {
+		return model.InboxMessage{}, false, err
+	}
+	return message, true, nil
+}
+
+func (s *RedisStore) UpdateInboxPush(ctx context.Context, userID, serverID int64, id, status string, attempts int, at time.Time) error {
+	message, ok, err := s.GetInboxMessage(ctx, userID, serverID, id)
+	if err != nil || !ok {
+		return err
+	}
+	stamp := at
+	message.PushStatus = status
+	message.PushAttempts = attempts
+	if status == "sent" {
+		message.PushedAt = &stamp
+	}
+	return s.saveInboxMessage(ctx, message)
+}
+
+func (s *RedisStore) loadInboxItems(ctx context.Context, ids []string) ([]model.InboxMessage, error) {
+	if len(ids) == 0 {
+		return []model.InboxMessage{}, nil
+	}
+	keys := make([]string, len(ids))
+	for i, id := range ids {
+		keys[i] = inboxItemKey(id)
+	}
+	values, err := s.client.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]model.InboxMessage, 0, len(values))
+	for _, value := range values {
+		raw, ok := value.(string)
+		if !ok {
+			continue
+		}
+		var message model.InboxMessage
+		if err := json.Unmarshal([]byte(raw), &message); err != nil {
+			continue
+		}
+		result = append(result, message)
+	}
+	return result, nil
+}
+
+func (s *RedisStore) loadInboxItem(ctx context.Context, id string) (model.InboxMessage, bool, error) {
+	payload, err := s.client.Get(ctx, inboxItemKey(id)).Bytes()
+	if errors.Is(err, redis.Nil) {
+		return model.InboxMessage{}, false, nil
+	}
+	if err != nil {
+		return model.InboxMessage{}, false, err
+	}
+	var message model.InboxMessage
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return model.InboxMessage{}, false, nil
+	}
+	return message, true, nil
+}
+
+func (s *RedisStore) saveInboxMessage(ctx context.Context, message model.InboxMessage) error {
 	encoded, err := json.Marshal(message)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if err := s.client.SetArgs(ctx, key, encoded, redis.SetArgs{KeepTTL: true}).Err(); err != nil {
-		return false, err
-	}
-	return true, nil
+	return s.client.SetArgs(ctx, inboxItemKey(message.ID), encoded, redis.SetArgs{KeepTTL: true}).Err()
 }
 
 func (s *RedisStore) DeleteInboxMessages(ctx context.Context, userID, serverID int64) error {

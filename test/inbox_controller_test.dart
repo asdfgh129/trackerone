@@ -222,6 +222,70 @@ void main() {
     });
   });
 
+  group('command result linkage', () {
+    test('pending item is local, not unread, and resolved by result', () async {
+      final result = InboxMessage(
+        id: 'result-1',
+        kind: InboxKind.notice,
+        data: const {
+          'eventType': 'commandResult',
+          'deviceId': 7,
+          'result': 'success',
+          'success': true,
+        },
+        createdAt: DateTime.now(),
+      );
+      final api = _FakeInboxApi(
+        pages: [
+          const InboxPage(messages: []),
+          InboxPage(messages: [result]),
+        ],
+      );
+      final container = createContainer(api: api, store: _FakeInboxStore());
+      await container.read(inboxProvider.future);
+
+      final notifier = container.read(inboxProvider.notifier);
+      notifier.noteCommandDispatched(deviceId: 7, command: 'engineStop');
+
+      var state = container.read(inboxProvider).requireValue;
+      expect(state.messages, hasLength(1));
+      expect(state.messages.single.isCommandPending, isTrue);
+      expect(state.unread, 0);
+      expect(container.read(inboxUnreadProvider), 0);
+
+      await notifier.sync();
+
+      state = container.read(inboxProvider).requireValue;
+      expect(state.messages.map((m) => m.id), ['result-1']);
+      expect(state.messages.single.isCommandResult, isTrue);
+    });
+
+    test('pending item for another device is kept', () async {
+      final result = InboxMessage(
+        id: 'result-1',
+        kind: InboxKind.notice,
+        data: const {'eventType': 'commandResult', 'deviceId': 8},
+        createdAt: DateTime.now(),
+      );
+      final api = _FakeInboxApi(
+        pages: [
+          const InboxPage(messages: []),
+          InboxPage(messages: [result]),
+        ],
+      );
+      final container = createContainer(api: api, store: _FakeInboxStore());
+      await container.read(inboxProvider.future);
+
+      final notifier = container.read(inboxProvider.notifier);
+      notifier.noteCommandDispatched(deviceId: 7, command: 'engineStop');
+      await notifier.sync();
+
+      final state = container.read(inboxProvider).requireValue;
+      expect(state.messages.where((m) => m.isCommandPending), hasLength(1));
+      expect(state.messages.where((m) => m.isCommandResult), hasLength(1));
+    });
+  });
+
   group('read state', () {
     test('markRead persists and updates the badge', () async {
       final api = _FakeInboxApi(

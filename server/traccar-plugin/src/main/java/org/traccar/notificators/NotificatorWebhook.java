@@ -46,9 +46,16 @@ import org.traccar.session.cache.CacheManager;
  * <pre>
  * &lt;entry key='notificator.types'&gt;web,mail,webhook&lt;/entry&gt;
  * &lt;entry key='notificator.webhook.url'&gt;https://push.example.com/v1/events&lt;/entry&gt;
+ * &lt;entry key='notificator.webhook.inboxUrl'&gt;https://push.example.com/v1/messages&lt;/entry&gt;
+ * &lt;entry key='notificator.webhook.inboxTypes'&gt;commandResult&lt;/entry&gt;
+ * &lt;entry key='notificator.webhook.serverId'&gt;1&lt;/entry&gt;
  * &lt;entry key='notificator.webhook.secret'&gt;请替换为随机密钥&lt;/entry&gt;
  * &lt;entry key='notificator.webhook.timeoutSeconds'&gt;5&lt;/entry&gt;
  * </pre>
+ *
+ * 指令结果（`commandResult`）默认写入收件箱（`/v1/messages`），
+ * 使用同一个 webhook secret 做 HMAC 签名；其余事件仍走 `/v1/events`。
+ * 未配置 `inboxUrl` 时按 `url` 自动推导（`/v1/events` → `/v1/messages`）。
  *
  * 签名：`X-Traccar-Signature: sha256=<hex(hmac_sha256(body, secret))>`
  */
@@ -86,6 +93,21 @@ public class NotificatorWebhook extends Notificator {
         }
 
         try {
+            long timeoutSeconds = parseLong(
+                    config.getString("notificator.webhook.timeoutSeconds"), 5L);
+
+            // 指令结果等事件写入收件箱：推送只带 inboxId，详情由 App 拉取。
+            if (isInboxEvent(event.getType())) {
+                String inboxUrl = resolveInboxUrl(url);
+                if (inboxUrl != null && !inboxUrl.isBlank()) {
+                    return postInboxMessage(inboxUrl, user, message, event, position, timeoutSeconds);
+                }
+                LOGGER.warn(
+                        "notificator.webhook.inboxUrl is not resolvable, "
+                                + "falling back to event webhook for {}",
+                        event.getType());
+            }
+
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("version", 1);
             payload.put("userId", user.getId());
@@ -109,36 +131,132 @@ public class NotificatorWebhook extends Notificator {
             payload.put("issuedAt", System.currentTimeMillis());
 
             String body = objectMapper.writeValueAsString(payload);
-
-            long timeoutSeconds = parseLong(
-                    config.getString("notificator.webhook.timeoutSeconds"), 5L);
-            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
-                    .timeout(Duration.ofSeconds(timeoutSeconds))
-                    .header("Content-Type", "application/json; charset=utf-8")
-                    .header("User-Agent", "traccar-webhook/1")
-                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
-
-            String secret = config.getString("notificator.webhook.secret");
-            if (secret != null && !secret.isBlank()) {
-                builder.header("X-Traccar-Signature", "sha256=" + hmacSha256(body, secret));
-            }
-
-            return httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(response -> {
-                        if (response.statusCode() / 100 != 2) {
-                            LOGGER.warn(
-                                    "Webhook rejected event {} for user {}: HTTP {} {}",
-                                    event.getId(), user.getId(),
-                                    response.statusCode(), response.body());
-                            throw new CompletionException(new IllegalStateException(
-                                    "Webhook returned HTTP " + response.statusCode()));
-                        }
-                    });
+            return post(url, body, timeoutSeconds, event.getId(), user.getId());
 
         } catch (Exception error) {
             LOGGER.warn("Webhook delivery failed for event {}", event.getId(), error);
             return CompletableFuture.failedFuture(error);
         }
+    }
+
+    /**
+     * 把指令结果写入网关收件箱。
+     *
+     * 载荷字段与 `POST /v1/messages` 契约一致；使用现有 webhook secret 做 HMAC 签名，
+     * 因此 Traccar 侧不需要配置管理令牌。
+     */
+    private CompletableFuture<Void> postInboxMessage(
+            String inboxUrl, User user, NotificationMessage message, Event event,
+            Position position, long timeoutSeconds) throws Exception {
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("eventType", event.getType());
+        data.put("eventId", event.getId());
+        data.put("deviceId", event.getDeviceId());
+
+        String result = extractResult(event, position);
+        if (!result.isBlank()) {
+            data.put("result", result);
+            data.put("success", isSuccess(result));
+        }
+
+        String body = result;
+        if (body.isBlank()) {
+            body = message.body();
+        }
+        if (body == null || body.isBlank()) {
+            body = "设备已返回指令结果";
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("userId", user.getId());
+        payload.put("serverId", parseLong(
+                config.getString("notificator.webhook.serverId"), 1L));
+        payload.put("kind", "notice");
+        // 标题由 App 按事件类型本地化，避免服务端写死中文。
+        payload.put("title", "");
+        payload.put("body", body);
+        payload.put("data", data);
+        payload.put("expiresIn", 7 * 24 * 3600L);
+
+        String encoded = objectMapper.writeValueAsString(payload);
+        return post(inboxUrl, encoded, timeoutSeconds, event.getId(), user.getId());
+    }
+
+    private String extractResult(Event event, Position position) {
+        Object value = event.getAttributes() != null
+                ? event.getAttributes().get(Position.KEY_RESULT) : null;
+        if (value == null && position != null && position.getAttributes() != null) {
+            value = position.getAttributes().get(Position.KEY_RESULT);
+        }
+        return value == null ? "" : value.toString().trim();
+    }
+
+    private static boolean isSuccess(String result) {
+        String normalized = result.trim().toLowerCase();
+        return normalized.equals("success")
+                || normalized.equals("ok")
+                || normalized.equals("done")
+                || normalized.equals("true");
+    }
+
+    private boolean isInboxEvent(String type) {
+        if (type == null || type.isBlank()) {
+            return false;
+        }
+        String configured = config.getString("notificator.webhook.inboxTypes");
+        if (configured == null || configured.isBlank()) {
+            configured = Event.TYPE_COMMAND_RESULT;
+        }
+        for (String item : configured.split(",")) {
+            if (item.trim().equalsIgnoreCase(type)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 收件箱地址：优先读 `notificator.webhook.inboxUrl`；
+     * 否则把事件地址的 `/v1/events` 替换为 `/v1/messages`。
+     */
+    private String resolveInboxUrl(String eventUrl) {
+        String explicit = config.getString("notificator.webhook.inboxUrl");
+        if (explicit != null && !explicit.isBlank()) {
+            return explicit.trim();
+        }
+        int index = eventUrl.lastIndexOf("/v1/events");
+        if (index < 0) {
+            return null;
+        }
+        return eventUrl.substring(0, index) + "/v1/messages";
+    }
+
+    private CompletableFuture<Void> post(
+            String url, String body, long timeoutSeconds, long eventId, long userId) throws Exception {
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .header("Content-Type", "application/json; charset=utf-8")
+                .header("User-Agent", "traccar-webhook/1")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8));
+
+        String secret = config.getString("notificator.webhook.secret");
+        if (secret != null && !secret.isBlank()) {
+            builder.header("X-Traccar-Signature", "sha256=" + hmacSha256(body, secret));
+        }
+
+        return httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    if (response.statusCode() / 100 != 2) {
+                        LOGGER.warn(
+                                "Webhook rejected event {} for user {}: HTTP {} {}",
+                                eventId, userId,
+                                response.statusCode(), response.body());
+                        throw new CompletionException(new IllegalStateException(
+                                "Webhook returned HTTP " + response.statusCode()));
+                    }
+                });
     }
 
     private static long parseLong(String value, long fallback) {

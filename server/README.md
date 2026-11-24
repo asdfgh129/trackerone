@@ -55,14 +55,22 @@ private static final Map<String, Class<? extends Notificator>> NOTIFICATORS_ALL 
 ```xml
 <entry key='notificator.types'>web,mail,webhook</entry>
 <entry key='notificator.webhook.url'>https://push.example.com/v1/events</entry>
+<entry key='notificator.webhook.inboxUrl'>https://push.example.com/v1/messages</entry>
+<entry key='notificator.webhook.inboxTypes'>commandResult</entry>
+<entry key='notificator.webhook.serverId'>1</entry>
 <entry key='notificator.webhook.secret'>替换为随机密钥</entry>
 <entry key='notificator.webhook.timeoutSeconds'>5</entry>
 ```
+
+- `inboxUrl` 可省略：默认把 `url` 的 `/v1/events` 替换为 `/v1/messages`；
+- `inboxTypes` 逗号分隔，命中后写入收件箱而不是普通事件推送；
+- 签名仍用 `secret`，Traccar 不需要配置 `ADMIN_TOKEN`。
 
 ### 1.4 在 Web 端启用
 
 通知规则（Notifications）里把 `notificator` 选为 **webhook**。
 默认值仍是 `web`，只推给在线 WebSocket。
+指令结果需要为 `commandResult` 类型启用通知，否则收件箱收不到结果。
 
 ### 1.5 构建
 
@@ -200,7 +208,9 @@ Content-Type: application/json
 - `kind`：`command` / `notice` / `chat`；缺省 `notice`；
 - `expiresIn` 为秒，缺省 command 1h、chat 72h、notice 7d；
 - 返回 `201`：`{"message": {...}, "push": "sent|no_alias|failed"}`；
-- 推送失败不影响入库，App 下次同步仍能拉到。
+- 推送失败不影响入库，App 下次同步仍能拉到；
+- Traccar 也可直接调用：不带 `Authorization`，改用与 `/v1/events`
+  相同的 `X-Traccar-Signature: sha256=<hmac>`，消息 `source` 记为 `traccar`。
 
 **拉取（App）**
 
@@ -240,6 +250,57 @@ Authorization: Bearer <app-session-token>
 
 - 幂等；返回 `204`；消息不属于当前用户或不存在返回 `404`；
 - ACK 表示「已收到」，不等于已读；已读仅存在 App 本地。
+
+**撤回 / 重发（管理员）**
+
+```http
+POST /v1/messages/{id}/revoke?userId=1&serverId=1
+POST /v1/messages/{id}/resend?userId=1&serverId=1
+Authorization: Bearer <ADMIN_TOKEN>
+```
+
+- 撤回为软删除：App 不再拉取，审计仍保留 `revokedAt`；
+- 重发只重推壳通知，不新增消息；已撤回或已过期返回 `400`。
+
+**审计（管理员）**
+
+```http
+GET /v1/messages/audit?userId=1&serverId=1&cursor=&limit=50
+Authorization: Bearer <ADMIN_TOKEN>
+```
+
+```json
+{
+  "messages": [
+    {
+      "id": "msg_1_12",
+      "userId": 1,
+      "serverId": 1,
+      "kind": "notice",
+      "title": "",
+      "body": "success",
+      "source": "traccar",
+      "pushStatus": "sent",
+      "pushAttempts": 1,
+      "pushedAt": "2026-11-24T10:00:01Z",
+      "ackedAt": "2026-11-24T10:00:05Z",
+      "revokedAt": null,
+      "data": { "eventType": "commandResult", "deviceId": 42 }
+    }
+  ],
+  "nextCursor": "12"
+}
+```
+
+- 按序号倒序；`nextCursor` 为空串表示没有更多；
+- 含已撤回、已过期消息，便于排查投递与回执。
+
+**指令结果**
+
+Traccar 的 `commandResult` 默认由 `NotificatorWebhook` 直接写入
+`POST /v1/messages`（`inboxTypes` 可配置）；旧插件仍发 `/v1/events` 时，
+网关会自动转为收件箱消息。`data` 含 `eventType/eventId/deviceId/result/success`，
+App 以本地化「指令结果」卡片展示。
 
 **清空（管理员，注销 / 清除数据）**
 

@@ -91,7 +91,7 @@ xcrun altool --upload-app --type ios \
 - [x] 用户同意隐私政策前不初始化地图/推送/统计 SDK（首启全局弹窗 + 地图独立授权）
 - [x] 后台定位单独授权与撤回（`core/privacy/background_location_consent.dart`，
       设置页可关闭；撤回总隐私授权时一并清除并停止后台上报）
-- [ ] 新增 74 个 ARB key 的人工翻译：32 种语言当前回落英文（共 2368 条，
+- [ ] 新增 81 个 ARB key 的人工翻译：33 种语言当前回落英文（共 2599 条，
       `flutter gen-l10n` 会列出未翻译条目），上架前至少补齐 en 之外的商店主推语言
 - [x] 提供账号注销与数据删除入口（已接 `DELETE /api/users/{id}`，服务端策略待确认）
 - [ ] APP 备案号、ICP 备案、地图审图号展示在设置/关于页；
@@ -123,6 +123,7 @@ flutter build ios --simulator --no-codesign
 - [x] 消息中心（`/inbox`）：空态 / 错误态 / 网关未配置 / 离线队列均有处理；
 - [x] 消息网关接口与存储已实现（`GET/POST /v1/messages`、ACK、注销清理，
       见 `server/README.md` 2.4 与 [docs/17](17-adr-downlink.md)）；Go 测试通过；
+- [x] 指令结果链路（Traccar `commandResult` → 收件箱）与撤回/重发/审计接口已实现；
 - [ ] 部署网关并完成收件箱真机联调（App 侧可用 `--dart-define=INBOX_DEMO=true` 先走通交互）。
 
 ## 7. 性能基线记录

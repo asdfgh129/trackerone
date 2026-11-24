@@ -36,9 +36,13 @@ class InboxState {
 
   bool get isEmpty => messages.isEmpty;
 
-  int get unread => messages.where((m) => !readIds.contains(m.id)).length;
+  int get unread =>
+      messages
+          .where((m) => !m.isCommandPending && !readIds.contains(m.id))
+          .length;
 
-  bool isUnread(InboxMessage message) => !readIds.contains(message.id);
+  bool isUnread(InboxMessage message) =>
+      !message.isCommandPending && !readIds.contains(message.id);
 
   InboxState copyWith({
     List<InboxMessage>? messages,
@@ -141,7 +145,7 @@ class InboxController extends AsyncNotifier<InboxState> {
         cursor: force ? null : current.cursor,
         limit: _pageSize,
       );
-      final merged = _merge(current.messages, page.messages);
+      final merged = _resolvePending(_merge(current.messages, page.messages));
       final cursor = page.nextCursor ?? current.cursor;
       await _ackAll(api, token, page.messages);
       final readIds = await store.readReadIds(scope);
@@ -188,6 +192,51 @@ class InboxController extends AsyncNotifier<InboxState> {
   }
 
   Future<void> markAllRead() => markRead('', all: true);
+
+  /// 记录一条本地「等待设备返回结果」占位消息。
+  ///
+  /// 占位消息不落盘、不计未读；收到同一设备的 `commandResult` 后自动移除，
+  /// 超过 15 分钟也会清理，避免长期停留在列表里。
+  void noteCommandDispatched({required int deviceId, required String command}) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    final now = DateTime.now();
+    final pending = InboxMessage(
+      id: 'local-${now.microsecondsSinceEpoch}',
+      kind: InboxKind.notice,
+      data: {
+        'eventType': 'commandPending',
+        'deviceId': deviceId,
+        'command': command,
+      },
+      createdAt: now,
+    );
+    state = AsyncData(
+      current.copyWith(messages: [pending, ...current.messages]),
+    );
+  }
+
+  /// 移除已被真实结果覆盖或超时的本地占位消息。
+  List<InboxMessage> _resolvePending(List<InboxMessage> messages) {
+    final results = messages.where((m) => m.isCommandResult).toList();
+    final now = DateTime.now();
+    return messages
+        .where((message) {
+          if (!message.isCommandPending) return true;
+          final created = message.createdAt ?? now;
+          if (now.difference(created) > const Duration(minutes: 15)) {
+            return false;
+          }
+          return !results.any((result) {
+            if (result.deviceId != message.deviceId) return false;
+            final resultAt = result.createdAt ?? now;
+            return !resultAt.isBefore(
+              created.subtract(const Duration(minutes: 1)),
+            );
+          });
+        })
+        .toList(growable: false);
+  }
 
   /// 投递回执失败不阻塞展示：消息会在下次同步时重新下发并被去重。
   Future<void> _ackAll(

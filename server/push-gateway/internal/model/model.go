@@ -102,12 +102,30 @@ type InboxMessage struct {
 	Title     string         `json:"title,omitempty"`
 	Body      string         `json:"body,omitempty"`
 	Data      map[string]any `json:"data,omitempty"`
+	Source    string         `json:"source,omitempty"`
 	CreatedAt time.Time      `json:"createdAt"`
 	ExpiresAt *time.Time     `json:"expiresAt,omitempty"`
+	RevokedAt *time.Time     `json:"revokedAt,omitempty"`
 	AckedAt   *time.Time     `json:"-"`
+
+	// 推送状态只用于管理端审计，App 端可忽略。
+	PushStatus   string     `json:"pushStatus,omitempty"`
+	PushAttempts int        `json:"pushAttempts,omitempty"`
+	PushedAt     *time.Time `json:"pushedAt,omitempty"`
 }
 
-// InboxSendRequest 是管理端写入一条收件箱消息的请求体。
+// InboxAuditMessage 是管理端审计视图。
+//
+// 相比 App 视图额外暴露 userId / serverId / ackedAt，
+// 便于运营排查「发给谁、推到没有、手机收没收到」。
+type InboxAuditMessage struct {
+	InboxMessage
+	UserID   int64      `json:"userId"`
+	ServerID int64      `json:"serverId"`
+	AckedAt  *time.Time `json:"ackedAt,omitempty"`
+}
+
+// InboxSendRequest 是管理端或 Traccar 写入一条收件箱消息的请求体。
 //
 // ExpiresIn 单位为秒；为 0 时按 kind 取默认 TTL（command 1h / notice 7d / chat 3d）。
 type InboxSendRequest struct {
@@ -118,4 +136,6 @@ type InboxSendRequest struct {
 	Body      string         `json:"body"`
 	Data      map[string]any `json:"data,omitempty"`
 	ExpiresIn int64          `json:"expiresIn,omitempty"`
+	// Source 由网关内部填写：admin / traccar。
+	Source string `json:"source,omitempty"`
 }

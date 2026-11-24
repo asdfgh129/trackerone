@@ -36,10 +36,19 @@ type Store interface {
 	// PutInboxMessage 保存一条收件箱消息，分配序号与 id。
 	PutInboxMessage(ctx context.Context, message model.InboxMessage) (model.InboxMessage, error)
 	// ListInboxMessages 返回序号大于 afterSeq 的消息（按序号升序），最多 limit 条。
-	// afterSeq 为 0 时返回最新一页。
+	// afterSeq 为 0 时返回最新一页。已撤回的消息不会返回。
 	ListInboxMessages(ctx context.Context, userID, serverID, afterSeq int64, limit int) ([]model.InboxMessage, error)
+	// ListInboxAudit 按序号倒序返回消息（含已撤回、已过期），供管理端审计。
+	// beforeSeq 为 0 时从最新一条开始。
+	ListInboxAudit(ctx context.Context, userID, serverID, beforeSeq int64, limit int) ([]model.InboxMessage, error)
+	// GetInboxMessage 读取单条消息；消息不属于该用户时 found=false。
+	GetInboxMessage(ctx context.Context, userID, serverID int64, id string) (model.InboxMessage, bool, error)
 	// AckInboxMessage 记录投递回执；消息不属于该用户时返回 false。
 	AckInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (bool, error)
+	// RevokeInboxMessage 撤回消息：App 不再下发，但审计仍可查。
+	RevokeInboxMessage(ctx context.Context, userID, serverID int64, id string, at time.Time) (model.InboxMessage, bool, error)
+	// UpdateInboxPush 记录壳通知的投递状态（sent / no_alias / failed）。
+	UpdateInboxPush(ctx context.Context, userID, serverID int64, id, status string, attempts int, at time.Time) error
 	// DeleteInboxMessages 删除某用户在某服务器上的全部消息（注销 / 清除数据）。
 	DeleteInboxMessages(ctx context.Context, userID, serverID int64) error
 

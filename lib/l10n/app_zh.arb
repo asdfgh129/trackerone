@@ -435,5 +435,12 @@
   "inboxCommandSent": "指令已发送",
   "inboxCommandQueued": "当前离线，指令已加入队列",
   "inboxGatewayMissing": "未配置消息网关，无法同步服务端消息。",
-  "inboxExpired": "已过期"
+  "inboxExpired": "已过期",
+  "inboxViewDevice": "查看设备",
+  "inboxCommandPendingTitle": "等待设备返回结果…",
+  "inboxCommandPendingBody": "指令已发送到设备 #{deviceId}，结果会显示在这里。",
+  "inboxCommandResultTitle": "指令结果",
+  "inboxCommandResultSuccess": "执行成功",
+  "inboxCommandResultFailure": "执行失败",
+  "inboxCommandResultUnknown": "已返回结果"
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/command_localizer.dart';
 import '../../../core/localization/failure_localizer.dart';
@@ -174,12 +175,30 @@ class _MessageCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final title = message.title ?? _kindLabel(l10n, message.kind);
+    final title =
+        message.title ??
+        (message.isCommandResult
+            ? l10n.inboxCommandResultTitle
+            : message.isCommandPending
+            ? l10n.inboxCommandPendingTitle
+            : _kindLabel(l10n, message.kind));
+    final body =
+        message.isCommandPending
+            ? (message.body ??
+                (message.deviceId != null
+                    ? l10n.inboxCommandPendingBody(message.deviceId!)
+                    : null))
+            : message.isCommandResult
+            ? (message.commandResult ?? message.body)
+            : message.body;
 
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => ref.read(inboxProvider.notifier).markRead(message.id),
+        onTap:
+            message.isCommandPending
+                ? null
+                : () => ref.read(inboxProvider.notifier).markRead(message.id),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           child: Row(
@@ -188,7 +207,7 @@ class _MessageCard extends ConsumerWidget {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                child: Icon(_kindIcon(message.kind), size: 18),
+                child: Icon(_icon(message), size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -221,14 +240,18 @@ class _MessageCard extends ConsumerWidget {
                         ],
                       ],
                     ),
-                    if (message.body != null) ...[
+                    if (body != null && body.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        message.body!,
+                        body,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall,
                       ),
+                    ],
+                    if (message.isCommandResult) ...[
+                      const SizedBox(height: 6),
+                      _ResultChip(message: message),
                     ],
                     const SizedBox(height: 6),
                     Row(
@@ -239,14 +262,30 @@ class _MessageCard extends ConsumerWidget {
                             style: theme.textTheme.labelSmall,
                           ),
                         const Spacer(),
-                        if (message.hasCommand && message.isExpired)
+                        if (message.isCommandPending) ...[
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ] else if (message.isCommandResult)
+                          TextButton(
+                            onPressed:
+                                message.deviceId == null
+                                    ? null
+                                    : () => context.push(
+                                      '/device/${message.deviceId}',
+                                    ),
+                            child: Text(l10n.inboxViewDevice),
+                          )
+                        else if (message.hasCommand && message.isExpired)
                           Text(
                             l10n.inboxExpired,
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.outline,
                             ),
-                          ),
-                        if (message.hasCommand && !message.isExpired)
+                          )
+                        else if (message.hasCommand)
                           FilledButton.tonal(
                             onPressed: () => _runCommand(context, ref, message),
                             child: Text(l10n.inboxExecute),
@@ -261,6 +300,18 @@ class _MessageCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  static IconData _icon(InboxMessage message) {
+    if (message.isCommandPending) return Icons.hourglass_top;
+    if (message.isCommandResult) {
+      return switch (message.commandSucceeded) {
+        true => Icons.check_circle_outline,
+        false => Icons.error_outline,
+        null => Icons.task_alt,
+      };
+    }
+    return _kindIcon(message.kind);
   }
 
   Future<void> _runCommand(
@@ -316,6 +367,10 @@ class _MessageCard extends ConsumerWidget {
             attributes: message.commandAttributes,
           );
       await ref.read(inboxProvider.notifier).markRead(message.id);
+      ref
+          .read(inboxProvider.notifier)
+          .noteCommandDispatched(deviceId: deviceId, command: type.apiType);
+      unawaited(ref.read(inboxProvider.notifier).sync());
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -350,6 +405,37 @@ class _MessageCard extends ConsumerWidget {
         InboxKind.chat => l10n.inboxKindChat,
         InboxKind.unknown => l10n.inboxTitle,
       };
+}
+
+class _ResultChip extends StatelessWidget {
+  const _ResultChip({required this.message});
+
+  final InboxMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final (label, color) = switch (message.commandSucceeded) {
+      true => (l10n.inboxCommandResultSuccess, Colors.green),
+      false => (l10n.inboxCommandResultFailure, theme.colorScheme.error),
+      null => (l10n.inboxCommandResultUnknown, theme.colorScheme.outline),
+    };
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(color: color),
+        ),
+      ),
+    );
+  }
 }
 
 class _InboxError extends StatelessWidget {

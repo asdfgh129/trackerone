@@ -86,6 +86,40 @@ void main() {
       );
     });
 
+    test('parses command result metadata', () {
+      final message = InboxMessage.fromJson(const {
+        'id': 'msg_result',
+        'kind': 'notice',
+        'body': 'success',
+        'data': {
+          'eventType': 'commandResult',
+          'eventId': 9001,
+          'deviceId': 7,
+          'result': 'success',
+          'success': true,
+        },
+      });
+
+      expect(message.isCommandResult, isTrue);
+      expect(message.isCommandPending, isFalse);
+      expect(message.eventType, 'commandResult');
+      expect(message.eventId, 9001);
+      expect(message.deviceId, 7);
+      expect(message.commandResult, 'success');
+      expect(message.commandSucceeded, isTrue);
+    });
+
+    test('treats command results without success flag as unknown', () {
+      final message = InboxMessage.fromJson(const {
+        'id': 'm',
+        'kind': 'notice',
+        'data': {'eventType': 'commandResult', 'result': 'timeout'},
+      });
+
+      expect(message.commandSucceeded, isNull);
+      expect(message.commandResult, 'timeout');
+    });
+
     test('isExpired only compares past expiry timestamps', () {
       final expired = InboxMessage.fromJson({
         'id': 'm',
