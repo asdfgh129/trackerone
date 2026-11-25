@@ -17,6 +17,8 @@ Traccar 事件 → 本网关 → 极光 JPush → 厂商通道 → TrackerOne Ap
 | 文案模板 | 中英文模板，按 `event.type` 渲染（围栏进入/离开、告警、点火、超速…） |
 | 重试与死信 | 投递失败指数退避重试 3 次，仍失败写入死信列表 |
 | 审计 | JSON 结构化日志：eventId、alias、类型、极光 msg_id、耗时 |
+| 下行消息 | REST 收件箱 + 推送壳（只带 `inboxId`），支持撤回 / 重发 / 投递审计 |
+| 运营台 | 内置 `/admin/` 静态页面：下发消息、筛选审计、撤回与重发 |
 | 健康检查 | `/healthz`（存活）、`/readyz`（依赖就绪） |
 
 ## 2. 接口
@@ -68,6 +70,29 @@ Content-Type: application/json
 - `GET /v1/aliases` —— 别名列表
 - `GET /v1/dead?limit=50` —— 死信列表
 - `POST /v1/flush` —— 手动触发延后队列投递
+- `POST /v1/messages` —— 下发收件箱消息（也接受 Traccar HMAC）
+- `GET /v1/messages/audit?userId&serverId&cursor&limit` —— 审计分页
+- `POST /v1/messages/{id}/revoke?userId&serverId` —— 撤回（软删除）
+- `POST /v1/messages/{id}/resend?userId&serverId` —— 重发壳通知
+- `DELETE /v1/messages?userId&serverId` —— 清空某用户消息（注销 / 清除数据）
+
+契约细节见仓库根目录 `server/README.md` 2.4。
+
+### 运营台 `/admin/`
+
+浏览器打开 `https://push.example.com/admin/`，在右上角粘贴 `ADMIN_TOKEN`（只存
+`sessionStorage`，关闭标签页即失效），即可：
+
+1. **下发消息**：选择 `notice` / `command` / `chat`，填用户 ID、标题、正文与
+   `data` JSON（指令需 `deviceId` + `command`），可选过期秒数；
+2. **审计**：按用户 / 服务器分页查询，查看来源、推送状态、尝试次数、回执与撤回时间；
+3. 对单条消息执行**撤回**或**重发**（已撤回 / 已过期不可重发）。
+
+运营台只是静态页面，不含业务数据；所有请求仍由浏览器携带管理员令牌调用管理接口。
+生产环境建议在反向代理层再加一层访问控制（IP 白名单 / SSO），并确保整个域名走 HTTPS。
+
+安全响应头由网关统一设置：严格 CSP（只允许同源脚本与样式）、`X-Frame-Options: DENY`、
+`X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`、`no-store`。
 
 ## 3. 本地运行
 
@@ -83,6 +108,9 @@ go run ./cmd/gateway
 
 # 3) 注册别名并模拟一条事件
 GATEWAY_URL=http://127.0.0.1:8080 SECRET=dev-secret ./scripts/send_test_event.sh
+
+# 4) 打开运营台（令牌填 admin-token）
+open http://127.0.0.1:8080/admin/
 ```
 
 内存模式重启会丢数据，生产必须用 Redis。

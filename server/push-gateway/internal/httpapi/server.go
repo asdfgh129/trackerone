@@ -45,6 +45,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/v1/flush", s.handleFlush)
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/readyz", s.handleReady)
+	s.registerAdmin(mux)
 }
 
 // handleEvent 接收 Traccar webhook。

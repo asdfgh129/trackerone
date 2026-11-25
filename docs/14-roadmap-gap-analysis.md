@@ -117,9 +117,9 @@
 10. **无障碍**：图标按钮部分有 tooltip，但缺少系统性的语义标签与 200% 字体回归。
 11. **横屏/平板**：未做专门布局。
 12. **性能实测**：聚合与合流代码已就位，但未记录 500/1000 设备帧率与内存。
-13. 🟡 **服务端下行消息**（2026-11-24）：App 侧消息中心、网关接口/存储、
-    指令结果、撤回/重发与审计均已完成（推送壳 + REST 收件箱 + ACK，见 `docs/17`
-    与 `server/README.md` 2.4）；仍待部署后真机联调，以及管理后台的发送界面。
+13. 🟡 **服务端下行消息**（2026-11-25）：App 侧消息中心、网关接口/存储、
+    指令结果、撤回/重发、审计与内置运营台 `/admin/` 均已完成（推送壳 + REST
+    收件箱 + ACK，见 `docs/17` 与 `server/README.md` 2.4）；仍待部署后真机联调。
 
 ### P1 代码缺陷修复（2026-11-13）
 
@@ -238,5 +238,6 @@ Silicon 后地图相关调试需使用真机（或等待高德 SDK 更新）。
 | 运营接口 | `server/README.md` 2.4 | ✅ `POST .../revoke`、`POST .../resend`、`GET /v1/messages/audit` |
 | Traccar 插件 | `NotificatorWebhook` | ✅ `inboxTypes=commandResult` 直传 `/v1/messages`，HMAC 复用 webhook secret |
 | 指令结果兜底 | `POST /v1/events` | ✅ 旧插件未升级时，网关自动把 `commandResult` 转收件箱 |
+| 运营台 | `GET /admin/` | ✅ 内置下发 / 审计 / 撤回 / 重发页面；CSP、`X-Frame-Options: DENY`、`nosniff`、`no-store` 测试通过 |
 | Android/iOS 构建 | `flutter build ... --release` | ✅ 6 个产物已重建；`CN=TrackerOne`、`com.trackerone.app` / 0.4.0、无 `AD_ID`、IPA 含 `PrivacyInfo.xcprivacy` |
 | 产物校验 | `shasum -a 256 dist/*` | ✅ 校验和已更新到 `dist/SHA256SUMS` |

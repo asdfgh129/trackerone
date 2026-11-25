@@ -124,6 +124,7 @@ flutter build ios --simulator --no-codesign
 - [x] 消息网关接口与存储已实现（`GET/POST /v1/messages`、ACK、注销清理，
       见 `server/README.md` 2.4 与 [docs/17](17-adr-downlink.md)）；Go 测试通过；
 - [x] 指令结果链路（Traccar `commandResult` → 收件箱）与撤回/重发/审计接口已实现；
+- [x] 网关内置运营台 `/admin/`（下发、审计分页、撤回 / 重发，严格 CSP 与安全响应头）；
 - [ ] 部署网关并完成收件箱真机联调（App 侧可用 `--dart-define=INBOX_DEMO=true` 先走通交互）。
 
 ## 7. 性能基线记录

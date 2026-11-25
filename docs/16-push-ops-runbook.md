@@ -248,6 +248,15 @@ tail -f /opt/traccar/logs/traccar.log | grep -i webhook
 前置：网关环境变量包含 `ADMIN_TOKEN`、`TRACCAR_BASE_URL`，App 已用
 `--dart-define=PUSH_GATEWAY_URL=https://push.<域名>` 构建并登录（完成别名注册）。
 
+**方式 A：内置运营台（推荐日常运营）**
+
+浏览器打开 `https://push.<域名>/admin/`，右上角粘贴 `ADMIN_TOKEN`（只存本标签页）。
+「下发消息」页可填用户 ID、类型、标题、正文与 `data` JSON；「审计」页按用户 / 服务器
+分页查询，可查看来源、推送状态、尝试次数、回执与撤回时间，并对单条消息撤回 / 重发。
+页面不含业务数据，所有请求仍由浏览器携带管理员令牌调用管理接口。
+
+**方式 B：curl 自检（适合脚本 / 验收）**
+
 ```bash
 # 1) 管理员下发一条消息（userId / serverId 与 alias 一致）
 curl -sS -X POST https://push.example.com/v1/messages \

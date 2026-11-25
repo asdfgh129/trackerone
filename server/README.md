@@ -309,6 +309,13 @@ DELETE /v1/messages?userId=1&serverId=1
 Authorization: Bearer <ADMIN_TOKEN>
 ```
 
+**内置运营台**
+
+浏览器打开 `https://push.<域名>/admin/`，粘贴 `ADMIN_TOKEN`（只存本标签页）即可
+下发消息、分页审计、撤回 / 重发。页面为静态资源，不含业务数据，所有请求仍走上述
+管理接口；网关为其设置严格 CSP、`X-Frame-Options: DENY`、`nosniff` 与 `no-store`。
+详见 [`server/push-gateway/README.md`](push-gateway/README.md)。
+
 ## 3. 网关最小实现建议
 
 > ✅ **已实现**：`server/push-gateway/`（Go，单二进制 + Redis，Docker 可直接部署）。

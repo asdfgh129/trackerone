@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TrackerOne 推送网关 · 运营台</title>
+  <link rel="stylesheet" href="/admin/app.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>TrackerOne 推送网关</h1>
+      <p class="muted">消息下发 · 审计 · 撤回 / 重发</p>
+    </div>
+    <div class="token">
+      <label for="token">管理员令牌</label>
+      <input id="token" type="password" autocomplete="off" placeholder="ADMIN_TOKEN">
+      <button id="save-token" type="button">保存</button>
+      <span id="token-state" class="muted"></span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button id="tab-send" class="tab active" type="button" role="tab" aria-selected="true">下发消息</button>
+    <button id="tab-audit" class="tab" type="button" role="tab" aria-selected="false">审计</button>
+  </nav>
+
+  <main>
+    <section id="pane-send" class="pane">
+      <form id="send-form">
+        <div class="grid">
+          <label>用户 ID
+            <input name="userId" type="number" min="1" required value="1">
+          </label>
+          <label>服务器 ID
+            <input name="serverId" type="number" min="1" value="1">
+          </label>
+          <label>类型
+            <select name="kind">
+              <option value="notice">通知 notice</option>
+              <option value="command">指令 command</option>
+              <option value="chat">消息 chat</option>
+            </select>
+          </label>
+          <label>过期秒数
+            <input name="expiresIn" type="number" min="0" placeholder="按类型默认">
+          </label>
+        </div>
+        <label>标题
+          <input name="title" type="text" placeholder="留空时 App 按事件类型本地化">
+        </label>
+        <label>正文
+          <textarea name="body" rows="3" placeholder="指令结果可留空，由 data.result 提供"></textarea>
+        </label>
+        <label>data（JSON）
+          <textarea name="data" rows="5" spellcheck="false">{"deviceId": 1, "command": "positionSingle"}</textarea>
+        </label>
+        <div class="actions">
+          <button class="primary" type="submit">发送</button>
+          <span id="send-state" class="muted"></span>
+        </div>
+      </form>
+      <pre id="send-result" class="result" hidden></pre>
+    </section>
+
+    <section id="pane-audit" class="pane" hidden>
+      <form id="audit-form" class="audit-filters">
+        <label>用户 ID
+          <input name="userId" type="number" min="1" required value="1">
+        </label>
+        <label>服务器 ID
+          <input name="serverId" type="number" min="1" value="1">
+        </label>
+        <label>每页
+          <input name="limit" type="number" min="1" max="200" value="50">
+        </label>
+        <button class="primary" type="submit">查询</button>
+        <span id="audit-state" class="muted"></span>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>ID / 类型</th>
+              <th>标题 / 正文</th>
+              <th>来源</th>
+              <th>推送</th>
+              <th>回执 / 撤回</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="audit-body"></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button id="load-more" type="button" hidden>加载更多</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/admin/app.js"></script>
+</body>
+</html>
