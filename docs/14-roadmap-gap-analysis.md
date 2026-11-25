@@ -209,7 +209,7 @@
 | Android AAB | `flutter build appbundle --release` | ✅ `TrackerOne-0.4.0-release.aab`，无 `AD_ID` |
 | iOS 构建 | `flutter build ios --release --no-codesign` | ✅ `Runner.app` 含 `PrivacyInfo.xcprivacy`，Bundle ID `com.trackerone.app` |
 | 产物校验 | `shasum -a 256 dist/*` | ✅ 6 个产物已生成（未带 `PUSH_GATEWAY_URL`，仅本地验证） |
-| 下行消息（App 侧） | `flutter test test/inbox_*` | ✅ 消息中心、去重、ACK 容忍、已读、未登录/无网关分支；网关接口仍待实现 |
+| 下行消息（App 侧） | `flutter test test/inbox_*` | ✅ 消息中心、去重、ACK 容忍、已读、未登录/无网关分支、指令结果联动；网关与运营台已实现，待部署联调 |
 
 已知构建告警：`AMapFoundation` 当前版本不含 arm64 模拟器切片，Apple Silicon +
 iOS 26+ 模拟器会提示不支持 arm64。当前 Intel Mac 模拟器构建通过；换 Apple

@@ -40,6 +40,12 @@ func TestAdminConsoleServesStaticAssets(t *testing.T) {
 	if !bytes.Contains(body, []byte("运营台")) || !bytes.Contains(body, []byte("/admin/app.js")) {
 		t.Fatalf("unexpected admin index: %s", body)
 	}
+	// 页面不使用内联脚本 / 事件处理 / 内联样式，才能配合严格 CSP。
+	for _, forbidden := range [][]byte{[]byte("<script>"), []byte("onclick="), []byte("onload="), []byte("style=")} {
+		if bytes.Contains(body, forbidden) {
+			t.Fatalf("admin index contains inline markup %q", forbidden)
+		}
+	}
 	if csp := response.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'self'") {
 		t.Fatalf("missing CSP: %q", csp)
 	}

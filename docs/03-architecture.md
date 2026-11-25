@@ -80,10 +80,12 @@ lib/
 │   │   └── sdk_tracking_engine.dart
 │   ├── push/
 │   │   ├── push_gateway.dart    # 抽象 + Noop
+│   │   ├── push_gateway_registry.dart
 │   │   ├── jpush_push_gateway.dart
 │   │   ├── fcm_push_gateway.dart
 │   │   ├── push_service.dart    # alias / 注册 / 消息门面
-│   │   └── push_router.dart     # data → 深链（待实现）
+│   │   ├── inbox_api.dart       # 收件箱契约 + Demo
+│   │   └── inbox_store.dart     # 已读 id 持久化
 │   ├── location/
 │   │   └── permission_service.dart
 │   ├── map/
