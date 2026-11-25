@@ -238,3 +238,5 @@ Silicon 后地图相关调试需使用真机（或等待高德 SDK 更新）。
 | 运营接口 | `server/README.md` 2.4 | ✅ `POST .../revoke`、`POST .../resend`、`GET /v1/messages/audit` |
 | Traccar 插件 | `NotificatorWebhook` | ✅ `inboxTypes=commandResult` 直传 `/v1/messages`，HMAC 复用 webhook secret |
 | 指令结果兜底 | `POST /v1/events` | ✅ 旧插件未升级时，网关自动把 `commandResult` 转收件箱 |
+| Android/iOS 构建 | `flutter build ... --release` | ✅ 6 个产物已重建；`CN=TrackerOne`、`com.trackerone.app` / 0.4.0、无 `AD_ID`、IPA 含 `PrivacyInfo.xcprivacy` |
+| 产物校验 | `shasum -a 256 dist/*` | ✅ 校验和已更新到 `dist/SHA256SUMS` |
